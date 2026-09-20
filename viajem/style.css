@@ -1343,3 +1343,104 @@ body {
   top: 0.8rem;
   right: 0.8rem;
 }
+/* ==============================
+   ORIGEM
+   ============================== */
+.origin-item {
+  background: linear-gradient(135deg, #f0ecff, #e8e0ff);
+  color: #5c3ec9;
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.origin-item i {
+  color: #7b5cff !important;
+}
+
+/* ==============================
+   AVISO IA
+   ============================== */
+.ai-warning {
+  background: #fff8e1;
+  border-left: 3px solid #ffb300;
+  border-radius: 0.6rem;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.78rem;
+  color: #7a5b1a;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.ai-warning i {
+  color: #ffb300;
+  font-size: 0.95rem;
+  margin-top: 0.1rem;
+  flex-shrink: 0;
+}
+
+/* ==============================
+   BOTÕES DE ÔNIBUS
+   ============================== */
+.timeline-btn.bus {
+  background: #22b573;
+  color: white;
+}
+
+.timeline-btn.bus:hover {
+  background: #1a9a5f;
+  transform: translateY(-2px);
+}
+
+.modal-btn.bus {
+  background: #22b573;
+  color: white;
+}
+
+.modal-btn.bus:hover {
+  background: #1a9a5f;
+}
+
+.price-row.bus-total strong {
+  color: #22b573 !important;
+}
+
+.modal-actions .modal-btn.bus {
+  grid-column: 1 / -1;
+}
+
+/* ==============================
+   AJUSTE BADGE IA E CLIMA
+   ============================== */
+.card-img {
+  position: relative;
+}
+
+.ai-badge {
+  position: absolute;
+  top: 0.8rem;
+  left: 0.8rem;
+  background: linear-gradient(135deg, #7b5cff, #ff7b2c);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+  animation: pulseAI 2s infinite;
+}
+
+.climate-badge {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.8rem;
+}
+
+@keyframes pulseAI {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(123, 92, 255, 0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(123, 92, 255, 0); }
+}

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TravelMatch AI · Planejador inteligente de viagens</title>
+  <title>ViaGen AI · Planejador inteligente de viagens</title>
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="style.css">
@@ -17,7 +17,7 @@
 
   <header class="header">
     <div class="logo">
-      <i class="fas fa-map-marked-alt"></i> Travel<span>Match</span> <small>AI</small>
+      <i class="fas fa-map-marked-alt"></i> Via<span>Gen</span> <small>AI</small>
     </div>
     <p class="subhead">Inteligência artificial que planeja sua viagem completa</p>
   </header>
@@ -28,6 +28,16 @@
     </div>
 
     <div class="search-grid">
+      <div class="input-group">
+        <label><i class="fas fa-plane-departure"></i> Saindo de</label>
+        <input type="text" id="originInput" placeholder="Ex: São Paulo, Botucatu...">
+      </div>
+
+      <div class="input-group">
+        <label><i class="fas fa-location-dot"></i> Destino (opcional)</label>
+        <input type="text" id="destinationInput" placeholder="Ex: Rio de Janeiro, Santos...">
+      </div>
+
       <div class="input-group">
         <label><i class="fas fa-calendar-alt"></i> Mês</label>
         <select id="monthSelect">
@@ -48,16 +58,6 @@
       </div>
 
       <div class="input-group">
-        <label><i class="fas fa-calendar"></i> Ano</label>
-        <select id="yearSelect">
-          <option value="">Qualquer</option>
-          <option value="2025">2025</option>
-          <option value="2026">2026</option>
-          <option value="2027">2027</option>
-        </select>
-      </div>
-
-      <div class="input-group">
         <label><i class="fas fa-temperature-high"></i> Clima preferido</label>
         <select id="climateSelect">
           <option value="">Todos</option>
@@ -67,11 +67,6 @@
           <option value="tropical">Tropical</option>
           <option value="seco">Seco / Desértico</option>
         </select>
-      </div>
-
-      <div class="input-group">
-        <label><i class="fas fa-location-dot"></i> Destino (opcional)</label>
-        <input type="text" id="destinationInput" placeholder="Ex: Rio de Janeiro, Lisboa...">
       </div>
 
       <div class="input-group">
@@ -98,7 +93,7 @@
   </section>
 
   <footer class="footer-note">
-    <i class="fas fa-plane"></i> TravelMatch AI &copy; 2025
+    <i class="fas fa-plane"></i> ViaGen AI &copy; 2025
   </footer>
 </div>
 
@@ -138,7 +133,7 @@
 </div>
 
 <!-- ============================================
-     TELA DE PACOTES (estilo Trivago)
+     TELA DE PACOTES
      ============================================ -->
 <div class="fullscreen-results packages-screen" id="packagesScreen">
   <div class="fullscreen-header">
@@ -163,6 +158,9 @@
     </button>
     <button class="tab-btn" data-tab="flights">
       <i class="fas fa-plane"></i> Voos
+    </button>
+    <button class="tab-btn" data-tab="bus">
+      <i class="fas fa-bus"></i> Ônibus
     </button>
     <button class="tab-btn" data-tab="hotels">
       <i class="fas fa-hotel"></i> Hotéis
