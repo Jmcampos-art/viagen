@@ -1173,3 +1173,173 @@ body {
   .modal { padding: 1.5rem; }
   .card-actions { grid-template-columns: 1fr; }
 }
+/* ==============================
+   BOTÕES DE RESERVA COM LINKS REAIS
+   ============================== */
+.offer-buy {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+/* Ações do Timeline IA */
+.timeline-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px dashed #d9e2ef;
+}
+
+.timeline-btn {
+  padding: 0.6rem 1.2rem;
+  border-radius: 2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: none;
+}
+
+.timeline-btn.hotels {
+  background: #003580;
+  color: white;
+}
+
+.timeline-btn.hotels:hover {
+  background: #002a5c;
+  transform: translateY(-2px);
+}
+
+.timeline-btn.flights {
+  background: #1c2c5b;
+  color: white;
+}
+
+.timeline-btn.flights:hover {
+  background: #0f1d3d;
+  transform: translateY(-2px);
+}
+
+.timeline-btn.packages {
+  background: #ff7b2c;
+  color: white;
+}
+
+.timeline-btn.packages:hover {
+  background: #e86a1a;
+  transform: translateY(-2px);
+}
+
+/* Ações do Modal */
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.modal-btn {
+  padding: 0.8rem 1rem;
+  border-radius: 2rem;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.modal-btn.hotels {
+  background: #003580;
+  color: white;
+}
+
+.modal-btn.hotels:hover {
+  background: #002a5c;
+}
+
+.modal-btn.flights {
+  background: #1c2c5b;
+  color: white;
+}
+
+.modal-btn.flights:hover {
+  background: #0f1d3d;
+}
+
+/* Responsivo */
+@media (max-width: 600px) {
+  .timeline-actions {
+    flex-direction: column;
+  }
+  
+  .timeline-btn {
+    justify-content: center;
+    width: 100%;
+  }
+  
+  .modal-actions {
+    grid-template-columns: 1fr;
+  }
+}
+/* ==============================
+   BADGE IA + AVISO
+   ============================== */
+.ai-badge {
+  position: absolute;
+  top: 0.8rem;
+  left: 0.8rem;
+  background: linear-gradient(135deg, #7b5cff, #ff7b2c);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+  animation: pulseAI 2s infinite;
+}
+
+@keyframes pulseAI {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(123, 92, 255, 0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(123, 92, 255, 0); }
+}
+
+.ai-notice {
+  background: linear-gradient(135deg, #f0ecff, #ffe8d9);
+  border: 1.5px solid #7b5cff40;
+  border-radius: 1.2rem;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #5c3ec9;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  grid-column: 1 / -1;
+}
+
+.ai-notice i {
+  font-size: 1.2rem;
+}
+
+/* Ajuste no card-img para posicionar badges */
+.card-img {
+  position: relative;
+}
+
+.climate-badge {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.8rem;
+}
