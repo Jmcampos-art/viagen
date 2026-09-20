@@ -12,14 +12,15 @@ app.use(express.json());
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 /* ============================================================
-   ROTA RAIZ - Teste
+   ROTA RAIZ
    ============================================================ */
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     status: 'Backend ViaGen AI + Groq funcionando! 🚀',
+    modelo: 'openai/gpt-oss-120b',
     rotas: [
-      'GET /',
-      'GET /test-ai',
+      'GET  /',
+      'GET  /test-ai',
       'POST /api/search-destination',
       'POST /api/itinerary'
     ]
@@ -32,15 +33,16 @@ app.get('/', (req, res) => {
 app.get('/test-ai', async (req, res) => {
   try {
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       messages: [{ role: "user", content: "Responda apenas: FUNCIONANDO" }],
       max_tokens: 20
     });
-    
+
     res.json({
       status: "✅ IA funcionando!",
       resposta: completion.choices[0]?.message?.content,
-      chaveGroq: process.env.GROQ_API_KEY ? "✅ Configurada" : "❌ NÃO CONFIGURADA"
+      chaveGroq: process.env.GROQ_API_KEY ? "✅ Configurada" : "❌ NÃO CONFIGURADA",
+      modelo: "openai/gpt-oss-120b"
     });
   } catch (error) {
     res.status(500).json({
@@ -112,7 +114,7 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
 `;
 
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       messages: [
         {
           role: "system",
@@ -187,7 +189,7 @@ Retorne JSON puro:
 `;
 
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       messages: [
         { role: "system", content: "Responda SEMPRE em JSON válido, sem markdown." },
         { role: "user", content: prompt }
@@ -210,7 +212,7 @@ Retorne JSON puro:
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
-  console.log(`🤖 IA: Groq (Llama 3.3 70B)`);
+  console.log(`🤖 IA: Groq (openai/gpt-oss-120b)`);
   console.log(`📋 Rotas disponíveis:`);
   console.log(`   GET  /`);
   console.log(`   GET  /test-ai`);
