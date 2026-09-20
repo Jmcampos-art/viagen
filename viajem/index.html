@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TravelMatch AI · Planejador inteligente de viagens</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============================================
+     TELA INICIAL (busca)
+     ============================================ -->
+<div class="container" id="homeScreen">
+
+  <header class="header">
+    <div class="logo">
+      <i class="fas fa-map-marked-alt"></i> Travel<span>Match</span> <small>AI</small>
+    </div>
+    <p class="subhead">Inteligência artificial que planeja sua viagem completa</p>
+  </header>
+
+  <section class="search-panel">
+    <div class="search-title">
+      <i class="fas fa-sliders-h"></i> Conte seu perfil de viagem
+    </div>
+
+    <div class="search-grid">
+      <div class="input-group">
+        <label><i class="fas fa-calendar-alt"></i> Mês</label>
+        <select id="monthSelect">
+          <option value="">Qualquer</option>
+          <option value="1">Janeiro</option>
+          <option value="2">Fevereiro</option>
+          <option value="3">Março</option>
+          <option value="4">Abril</option>
+          <option value="5">Maio</option>
+          <option value="6">Junho</option>
+          <option value="7">Julho</option>
+          <option value="8">Agosto</option>
+          <option value="9">Setembro</option>
+          <option value="10">Outubro</option>
+          <option value="11">Novembro</option>
+          <option value="12">Dezembro</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label><i class="fas fa-calendar"></i> Ano</label>
+        <select id="yearSelect">
+          <option value="">Qualquer</option>
+          <option value="2025">2025</option>
+          <option value="2026">2026</option>
+          <option value="2027">2027</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label><i class="fas fa-temperature-high"></i> Clima preferido</label>
+        <select id="climateSelect">
+          <option value="">Todos</option>
+          <option value="calor">Calor / Quente</option>
+          <option value="frio">Frio / Neve</option>
+          <option value="ameno">Ameno</option>
+          <option value="tropical">Tropical</option>
+          <option value="seco">Seco / Desértico</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label><i class="fas fa-location-dot"></i> Destino (opcional)</label>
+        <input type="text" id="destinationInput" placeholder="Ex: Rio de Janeiro, Lisboa...">
+      </div>
+
+      <div class="input-group">
+        <label><i class="fas fa-wallet"></i> Orçamento</label>
+        <select id="budgetSelect">
+          <option value="">Qualquer</option>
+          <option value="baixo">Econômico (até R$ 4.000)</option>
+          <option value="medio">Médio (R$ 4.000 - R$ 8.000)</option>
+          <option value="alto">Premium (acima de R$ 8.000)</option>
+        </select>
+      </div>
+
+      <button class="search-btn" id="searchBtn">
+        <i class="fas fa-search"></i> Buscar viagens
+      </button>
+    </div>
+
+    <div class="ai-panel">
+      <button class="ai-btn" id="aiBtn">
+        <i class="fas fa-wand-magic-sparkles"></i> Gerar roteiro completo com IA
+      </button>
+      <p class="ai-hint">A IA cria uma viagem inteira: múltiplos destinos, dias em cada lugar e roteiro dia a dia.</p>
+    </div>
+  </section>
+
+  <footer class="footer-note">
+    <i class="fas fa-plane"></i> TravelMatch AI &copy; 2025
+  </footer>
+</div>
+
+<!-- ============================================
+     TELA CHEIA DE RESULTADOS
+     ============================================ -->
+<div class="fullscreen-results" id="resultsScreen">
+  <div class="fullscreen-header">
+    <div class="fullscreen-header-left">
+      <button class="back-btn" id="backBtn">
+        <i class="fas fa-arrow-left"></i> Voltar
+      </button>
+      <h2 id="resultsScreenTitle">
+        <i class="fas fa-suitcase-rolling"></i> Resultados da busca
+      </h2>
+    </div>
+    <div class="fullscreen-header-right">
+      <span class="badge-info" id="resultCount">0 destinos</span>
+      <button class="ai-btn small" id="aiBtnFull">
+        <i class="fas fa-wand-magic-sparkles"></i> Roteiro IA
+      </button>
+    </div>
+  </div>
+
+  <div class="fullscreen-filters">
+    <span class="filter-chip active" data-filter="all"><i class="fas fa-globe"></i> Todos</span>
+    <span class="filter-chip" data-filter="frio"><i class="fas fa-snowflake"></i> Frio</span>
+    <span class="filter-chip" data-filter="calor"><i class="fas fa-fire"></i> Quente</span>
+    <span class="filter-chip" data-filter="tropical"><i class="fas fa-umbrella-beach"></i> Tropical</span>
+    <span class="filter-chip" data-filter="ameno"><i class="fas fa-cloud-sun"></i> Ameno</span>
+    <span class="filter-chip" data-filter="seco"><i class="fas fa-mountain"></i> Seco</span>
+  </div>
+
+  <div class="fullscreen-body">
+    <div class="cards-grid" id="cardsContainer"></div>
+  </div>
+</div>
+
+<!-- ============================================
+     TELA DE PACOTES (estilo Trivago)
+     ============================================ -->
+<div class="fullscreen-results packages-screen" id="packagesScreen">
+  <div class="fullscreen-header">
+    <div class="fullscreen-header-left">
+      <button class="back-btn" id="backFromPackages">
+        <i class="fas fa-arrow-left"></i> Voltar
+      </button>
+      <h2 id="packagesTitle">
+        <i class="fas fa-tags"></i> Pacotes para <span id="packagesDestName">—</span>
+      </h2>
+    </div>
+    <div class="fullscreen-header-right">
+      <span class="badge-info" id="packagesCount">0 ofertas</span>
+    </div>
+  </div>
+
+  <div class="packages-summary" id="packagesSummary"></div>
+
+  <div class="packages-tabs">
+    <button class="tab-btn active" data-tab="all">
+      <i class="fas fa-list"></i> Tudo
+    </button>
+    <button class="tab-btn" data-tab="flights">
+      <i class="fas fa-plane"></i> Voos
+    </button>
+    <button class="tab-btn" data-tab="hotels">
+      <i class="fas fa-hotel"></i> Hotéis
+    </button>
+    <button class="tab-btn" data-tab="packages">
+      <i class="fas fa-box-open"></i> Pacotes completos
+    </button>
+  </div>
+
+  <div class="fullscreen-body">
+    <div class="offers-list" id="offersContainer"></div>
+  </div>
+</div>
+
+<!-- ============================================
+     TELA DE ROTEIRO IA
+     ============================================ -->
+<div class="fullscreen-results itinerary-screen" id="itineraryScreen">
+  <div class="fullscreen-header">
+    <div class="fullscreen-header-left">
+      <button class="back-btn" id="backFromItinerary">
+        <i class="fas fa-arrow-left"></i> Voltar
+      </button>
+      <h2>
+        <i class="fas fa-route"></i> Sua viagem personalizada pela IA
+      </h2>
+    </div>
+    <div class="fullscreen-header-right">
+      <button class="ai-btn small" id="regenerateBtn">
+        <i class="fas fa-rotate"></i> Gerar outra
+      </button>
+    </div>
+  </div>
+
+  <div class="ai-loading" id="aiLoading" style="display: none;">
+    <i class="fas fa-circle-notch fa-spin"></i>
+    <span>IA criando sua viagem perfeita...</span>
+  </div>
+
+  <div class="fullscreen-body">
+    <div class="itinerary-summary" id="itinerarySummary"></div>
+    <div class="itinerary-timeline" id="itineraryTimeline"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
