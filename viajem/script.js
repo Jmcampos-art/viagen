@@ -1,8 +1,14 @@
 /* ============================================================
-   VIAGEN AI - SCRIPT COMPLETO
+   VIAGEN AI - SCRIPT COMPLETO (CORRIGIDO)
    ============================================================ */
 
 const API_URL = 'https://viagen.onrender.com';
+
+/* ---------- HELPER SEGURO PARA LER INPUTS ---------- */
+function getVal(id, fallback = '') {
+  const el = document.getElementById(id);
+  return el ? el.value : fallback;
+}
 
 /* ---------- BASE DE DESTINOS (fallback) ---------- */
 const destinations = [
@@ -130,7 +136,6 @@ function calculateHotelTotal(pricing, nights) {
   return pricing.hotelPerNight * nights;
 }
 
-/* ✅ CALCULAR NOITES ENTRE DUAS DATAS */
 function calculateNights(startDate, endDate) {
   if (!startDate || !endDate) return null;
   const start = new Date(startDate + 'T00:00:00');
@@ -140,7 +145,6 @@ function calculateNights(startDate, endDate) {
   return diffDays > 0 ? diffDays : null;
 }
 
-/* ✅ RETORNA AS DATAS CORRETAS CONFORME O MODO ATIVO */
 function getSearchDates() {
   const dateMode = document.querySelector('.date-tab.active')?.dataset.mode || 'dates';
 
@@ -173,8 +177,6 @@ function getSearchDates() {
   }
 }
 
-
-/* ✅ ATUALIZAR INFO DE NOITES */
 function updateNightsInfo() {
   const startDate = document.getElementById('dateInput').value;
   const endDate = document.getElementById('dateEndInput').value;
@@ -197,7 +199,7 @@ function updateNightsInfo() {
     if (dateRow) dateRow.classList.remove('input-row-dates');
   }
 }
-/* ✅ Retorna o valor do orçamento (número ou vazio) */
+
 function getBudgetValue() {
   const input = document.getElementById('budgetInput');
   if (!input) return '';
@@ -208,7 +210,6 @@ function getBudgetValue() {
   const value = parseInt(raw);
   if (isNaN(value) || value <= 0) return '';
   
-  // Classifica em faixa
   if (value <= 5000) return 'baixo';
   if (value <= 15000) return 'medio';
   if (value <= 30000) return 'alto';
@@ -291,7 +292,7 @@ async function searchWithAI(query) {
   const normalized = query.trim().toLowerCase();
   if (aiCache.has(normalized)) return aiCache.get(normalized);
 
-  const origin = document.getElementById('originInput')?.value.trim() || '';
+  const origin = getVal('originInput').trim();
   const searchDates = getSearchDates();
 
   const response = await fetch(`${API_URL}/api/search-destination`, {
@@ -302,9 +303,9 @@ async function searchWithAI(query) {
       date: searchDates.date,
       dateEnd: searchDates.dateEnd,
       nights: searchDates.nights,
-      climate: document.getElementById('climateSelect')?.value || '',
+      climate: getVal('climateSelect'),
       budget: getBudgetValue(),
-      budgetRaw: document.getElementById('budgetInput')?.value || ''
+      budgetRaw: getVal('budgetInput')
     })
   });
 
@@ -358,11 +359,11 @@ async function filterDestinations() {
   const dateEndValue = searchDates.dateEnd;
   const month = dateValue ? new Date(dateValue + 'T00:00:00').getMonth() + 1 : null;
   const nights = searchDates.nights;
-  const climate = document.getElementById('climateSelect').value;
-  const destinationText = document.getElementById('destinationInput').value.trim();
-  const originText = document.getElementById('originInput').value.trim();
+  const climate = getVal('climateSelect');
+  const destinationText = getVal('destinationInput').trim();
+  const originText = getVal('originInput').trim();
   const budget = getBudgetValue();
-  const budgetRaw = document.getElementById('budgetInput')?.value || '';
+  const budgetRaw = getVal('budgetInput');
 
   const cardsContainer = document.getElementById('cardsContainer');
   const resultCountSpan = document.getElementById('resultCount');
@@ -1086,7 +1087,11 @@ function openHotelModal(offerId) {
   document.body.style.overflow = 'hidden';
 }
 
-/* ---------- IA - ROTEIRO ---------- */
+/* ============================================================
+   ✅ IA - ROTEIRO (FUNÇÃO CORRIGIDA)
+   O erro era: document.getElementById('budgetSelect') → não existia
+   Correção: usar getBudgetValue() ou getVal('budgetInput')
+   ============================================================ */
 async function aiGenerateItinerary() {
   const searchDates = getSearchDates();
   const dateValue = searchDates.date;
@@ -1094,10 +1099,12 @@ async function aiGenerateItinerary() {
   const month = dateValue ? new Date(dateValue + 'T00:00:00').getMonth() + 1 : null;
   const monthName = month ? getMonthName(month) : '';
   const nights = searchDates.nights;
-  const climate = document.getElementById('climateSelect').value;
-  const destinationText = document.getElementById('destinationInput').value.trim();
-  const originText = document.getElementById('originInput').value.trim();
-  const budget = document.getElementById('budgetSelect').value;
+
+  // ✅ CORRIGIDO: leituras seguras + budget correto
+  const climate = getVal('climateSelect');
+  const destinationText = getVal('destinationInput').trim();
+  const originText = getVal('originInput').trim();
+  const budget = getBudgetValue(); // ← antes era document.getElementById('budgetSelect').value ❌
 
   if (destinationText) {
     console.log(`🎯 Destino específico: ${destinationText}`);
@@ -1572,7 +1579,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('destinationInput').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); filterDestinations(); }
   });
-    /* ✅ PRESETS DE ORÇAMENTO */
+
+  /* ✅ PRESETS DE ORÇAMENTO */
   const budgetInput = document.getElementById('budgetInput');
   const budgetChips = document.querySelectorAll('.budget-chip');
 
@@ -1580,14 +1588,12 @@ document.addEventListener('DOMContentLoaded', () => {
     chip.addEventListener('click', () => {
       const value = chip.dataset.value;
       
-      // Se já está ativo, limpa
       if (chip.classList.contains('active')) {
         chip.classList.remove('active');
         budgetInput.value = '';
         return;
       }
       
-      // Ativa só esse
       budgetChips.forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       budgetInput.value = value;
@@ -1596,7 +1602,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Quando o usuário digita, atualiza os chips
   if (budgetInput) {
     budgetInput.addEventListener('input', () => {
       const val = parseInt(budgetInput.value);
@@ -1605,6 +1610,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   }
+
   /* ✅ ABAS DE MODO: Datas vs Noites */
   const dateTabs = document.querySelectorAll('.date-tab');
   const datesRow = document.getElementById('datesRow');
