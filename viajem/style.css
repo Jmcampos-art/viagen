@@ -1444,3 +1444,288 @@ body {
   0%, 100% { box-shadow: 0 0 0 0 rgba(123, 92, 255, 0.5); }
   50% { box-shadow: 0 0 0 8px rgba(123, 92, 255, 0); }
 }
+.date-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #7b5cff, #ff7b2c);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  margin-left: 0.6rem;
+  letter-spacing: 0.3px;
+  vertical-align: middle;
+}
+/* ==============================
+   MODAL DE VOO
+   ============================== */
+.modal-flight-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.2rem;
+  border-radius: 1.2rem;
+  margin: -2rem -2rem 1.5rem;
+  flex-wrap: wrap;
+}
+
+.modal-flight-logo {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.modal-flight-price {
+  margin-left: auto;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-flight-price strong {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.flight-route {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #f7f9fe;
+  padding: 1.2rem;
+  border-radius: 1rem;
+  border: 1.5px solid #e6edf8;
+}
+
+.flight-point {
+  text-align: center;
+  flex: 1;
+}
+
+.flight-time {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #0f2b4b;
+  line-height: 1;
+}
+
+.flight-city {
+  font-size: 0.85rem;
+  color: #7a8ba8;
+  margin-top: 0.3rem;
+}
+
+.flight-line {
+  flex: 2;
+  text-align: center;
+  color: #ff7b2c;
+  position: relative;
+}
+
+.flight-line i {
+  font-size: 1.3rem;
+  margin-bottom: 0.3rem;
+  display: block;
+  position: relative;
+  z-index: 1;
+  background: #f7f9fe;
+  padding: 0 0.3rem;
+}
+
+.flight-line span {
+  font-size: 0.8rem;
+  color: #7a8ba8;
+  font-weight: 600;
+}
+
+.flight-line::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, #ff7b2c 0 6px, transparent 6px 12px);
+  z-index: 0;
+}
+
+/* ==============================
+   MODAL DE HOTEL
+   ============================== */
+.modal-hotel-gallery {
+  margin: -2rem -2rem 1.5rem;
+  border-radius: 2rem 2rem 0 0;
+  overflow: hidden;
+  background: #f1f5fc;
+}
+
+.hotel-main-photo {
+  width: 100%;
+  height: 220px;
+  background-size: cover;
+  background-position: center;
+}
+
+.hotel-thumbs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 4px;
+  background: white;
+}
+
+.hotel-thumb {
+  height: 70px;
+  background-size: cover;
+  background-position: center;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.hotel-thumb:hover {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+.modal-hotel-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.modal-hotel-logo {
+  width: 55px;
+  height: 55px;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: white;
+  flex-shrink: 0;
+}
+
+.hotel-stars {
+  font-size: 0.9rem;
+  letter-spacing: -2px;
+}
+
+.room-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.room-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f7f9fe;
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1.5px solid #e6edf8;
+  transition: 0.2s;
+}
+
+.room-option:hover {
+  border-color: #ff7b2c;
+  background: #fff8f3;
+}
+
+.room-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.room-info strong {
+  color: #0f2b4b;
+  font-size: 0.95rem;
+}
+
+.room-info span {
+  font-size: 0.8rem;
+  color: #7a8ba8;
+}
+
+.room-price {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ff7b2c;
+  white-space: nowrap;
+}
+
+.amenities-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+}
+
+.amenity {
+  background: #f1f5fc;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.8rem;
+  font-size: 0.85rem;
+  color: #2f405c;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.amenity i {
+  color: #ff7b2c;
+  font-size: 0.9rem;
+}
+
+/* Botão secundário (reservar) */
+.offer-buy.secondary {
+  background: #f1f5fc;
+  color: #2f405c;
+  border: 1.5px solid #d9e2ef;
+  margin-top: 0.5rem;
+}
+
+.offer-buy.secondary:hover {
+  background: #e6edf8;
+}
+
+/* Botão "Ver detalhes" nos cards */
+.offer-price .offer-buy {
+  width: 100%;
+  min-width: 130px;
+  text-decoration: none;
+}
+
+@media (max-width: 600px) {
+  .modal-flight-header {
+    flex-direction: column;
+    text-align: center;
+  }
+  .modal-flight-price {
+    margin-left: 0;
+    text-align: center;
+  }
+  .flight-route {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .flight-line::before {
+    display: none;
+  }
+  .hotel-thumb {
+    height: 50px;
+  }
+  .amenities-grid {
+    grid-template-columns: 1fr;
+  }
+}

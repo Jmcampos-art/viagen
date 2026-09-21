@@ -1,11 +1,11 @@
 /* ============================================================
-   VIAGEN AI - FRONTEND COMPLETO COM ÔNIBUS E ORIGEM
+   VIAGEN AI - FRONTEND COMPLETO (IDs NUMÉRICOS)
    ============================================================ */
 
 const API_URL = 'https://viagen.onrender.com';
 
 /* ------------------------------------------------------------
-   BASE DE DESTINOS (28 cidades brasileiras e mundiais)
+   BASE DE DESTINOS - IDs numéricos simples
    ------------------------------------------------------------ */
 const destinations = [
   { id: 1, name: "Rio de Janeiro", country: "Brasil", state: "Rio de Janeiro", region: "Sudeste", climate: "tropical", climateLabel: "Tropical / Quente", bestMonths: [12,1,2,3], pricing: { flight: 1200, bus: 250, hotelPerNight: 350, tours: 400 }, transport: { recommended: "both", flightAvailable: true, busAvailable: true, distanceKm: 430 }, attractions: ["Cristo Redentor", "Pão de Açúcar", "Copacabana", "Maracanã", "Escadaria Selarón"], image: "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?q=80&w=1470&auto=format&fit=crop", description: "Praias icônicas, montanhas e energia contagiante.", rating: 9.4, idealDays: 4, tips: "Leve protetor solar.", activities: [
@@ -38,7 +38,7 @@ const destinations = [
     { day: 1, title: "Bosque", desc: "Jequitibás e zoo." },
     { day: 2, title: "Centro", desc: "Museu do Café." }
   ]},
-  { id: 7, name: "São Paulo", country: "Brasil", state: "São Paulo", region: "Sudeste", climate: "ameno", climateLabel: "Ameno / Tropical de Altitude", bestMonths: [4,5,6,7,8,9], pricing: { flight: 900, bus: 150, hotelPerNight: 300, tours: 350 }, transport: { recommended: "both", flightAvailable: true, busAvailable: true, distanceKm: 0 }, attractions: ["MASP", "Ibirapuera", "Av. Paulista", "Mercado Municipal", "Theatro Municipal"], image: "https://images.unsplash.com/photo-1543059080-f9b1272213d5?q=80&w=1470&auto=format&fit=crop", description: "A maior cidade do Brasil, cultural e gastronômica.", rating: 9.0, idealDays: 3, tips: "Use o metrô para se locomover.", activities: [
+  { id: 7, name: "São Paulo", country: "Brasil", state: "São Paulo", region: "Sudeste", climate: "ameno", climateLabel: "Ameno / Tropical de Altitude", bestMonths: [4,5,6,7,8,9], pricing: { flight: 900, bus: 150, hotelPerNight: 300, tours: 350 }, transport: { recommended: "both", flightAvailable: true, busAvailable: true, distanceKm: 0 }, attractions: ["MASP", "Ibirapuera", "Av. Paulista", "Mercado Municipal", "Theatro Municipal"], image: "https://images.unsplash.com/photo-1543059080-f9b1272213d5?q=80&w=1470&auto=format&fit=crop", description: "A maior cidade do Brasil.", rating: 9.0, idealDays: 3, tips: "Use o metrô.", activities: [
     { day: 1, title: "Av. Paulista", desc: "MASP e Ibirapuera." },
     { day: 2, title: "Centro", desc: "Mercado e Theatro." },
     { day: 3, title: "Vila Madalena", desc: "Bares e grafite." }
@@ -92,10 +92,10 @@ const destinations = [
   ]}
 ];
 
-/* ------------------------------------------------------------
-   CACHE E COMPANHIAS
-   ------------------------------------------------------------ */
 const aiCache = new Map();
+
+/* Contador global para IDs de IA */
+let nextAIId = 1000;
 
 const airlines = [
   { code: "LA", name: "LATAM Airlines", logo: "LA", color: "#1c2c5b", rating: 8.4, perks: ["Bagagem 23kg", "Wi-Fi"], url: "https://www.latamairlines.com/br/pt" },
@@ -132,9 +132,7 @@ const hotelChains = [
   { name: "Expedia", logo: "E", color: "#00355f", rating: 8.4, type: "Agência", urlTemplate: "https://www.expedia.com.br/Hoteis" }
 ];
 
-/* ------------------------------------------------------------
-   UTILITÁRIOS
-   ------------------------------------------------------------ */
+/* ---------- UTILITÁRIOS ---------- */
 function getMonthName(m) {
   const months = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   return months[m] || "";
@@ -142,15 +140,6 @@ function getMonthName(m) {
 
 function getClimateIcon(c) {
   return { calor:"fa-fire", frio:"fa-snowflake", ameno:"fa-cloud-sun", tropical:"fa-umbrella-beach", seco:"fa-mountain" }[c] || "fa-sun";
-}
-
-function calculateTotal(pricing, nights, transport = 'flight') {
-  const transportCost = pricing[transport] || 0;
-  if (transportCost === 0 && pricing.flight) {
-    // fallback para flight se transporte não disponível
-    return (pricing.flight || 0) + (pricing.hotelPerNight * nights) + pricing.tours;
-  }
-  return transportCost + (pricing.hotelPerNight * nights) + pricing.tours;
 }
 
 function calculateHotelTotal(pricing, nights) {
@@ -209,9 +198,14 @@ function generateBookingUrl(offer, dest) {
   return '#';
 }
 
-/* ------------------------------------------------------------
-   NAVEGAÇÃO
-   ------------------------------------------------------------ */
+function formatDateLabel(dateValue) {
+  if (!dateValue) return '';
+  const d = new Date(dateValue + 'T00:00:00');
+  const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  return `${d.getDate()} de ${months[d.getMonth()]} de ${d.getFullYear()}`;
+}
+
+/* ---------- NAVEGAÇÃO ---------- */
 function showScreen(screenId) {
   document.querySelectorAll('.fullscreen-results').forEach(s => s.classList.remove('active'));
   if (screenId) {
@@ -222,9 +216,7 @@ function showScreen(screenId) {
   }
 }
 
-/* ------------------------------------------------------------
-   BUSCA COM IA
-   ------------------------------------------------------------ */
+/* ---------- BUSCA COM IA ---------- */
 async function searchWithAI(query) {
   const normalized = query.trim().toLowerCase();
   if (aiCache.has(normalized)) return aiCache.get(normalized);
@@ -235,9 +227,8 @@ async function searchWithAI(query) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      query,
-      origin,
-      month: document.getElementById('monthSelect')?.value || '',
+      query, origin,
+      date: document.getElementById('dateInput')?.value || '',
       climate: document.getElementById('climateSelect')?.value || '',
       budget: document.getElementById('budgetSelect')?.value || ''
     })
@@ -248,8 +239,10 @@ async function searchWithAI(query) {
   const data = await response.json();
   if (!data.name || !data.country) throw new Error('Resposta inválida da IA');
 
+  // ✅ ID numérico simples
+  nextAIId++;
   const destination = {
-    id: data.id || Date.now(),
+    id: nextAIId,
     name: data.name,
     country: data.country,
     state: data.state || '',
@@ -263,12 +256,7 @@ async function searchWithAI(query) {
       hotelPerNight: data.pricing?.hotelPerNight || 200,
       tours: data.pricing?.tours || 200
     },
-    transport: data.transport || {
-      recommended: data.pricing?.flight ? 'flight' : 'bus',
-      flightAvailable: !!data.pricing?.flight,
-      busAvailable: !!data.pricing?.bus,
-      distanceKm: null
-    },
+    transport: data.transport || { recommended: 'both', flightAvailable: true, busAvailable: true, distanceKm: null },
     attractions: data.attractions || [],
     image: data.image || `https://source.unsplash.com/featured/?${encodeURIComponent(data.name)},travel`,
     description: data.description || '',
@@ -280,6 +268,8 @@ async function searchWithAI(query) {
     origin
   };
 
+  console.log('✅ Destino IA criado com ID:', destination.id, '-', destination.name);
+
   aiCache.set(normalized, destination);
   if (!destinations.find(d => d.name.toLowerCase() === destination.name.toLowerCase())) {
     destinations.push(destination);
@@ -288,15 +278,13 @@ async function searchWithAI(query) {
   return destination;
 }
 
-/* ------------------------------------------------------------
-   BUSCA MANUAL
-   ------------------------------------------------------------ */
+/* ---------- BUSCA MANUAL ---------- */
 async function filterDestinations() {
-  const month = document.getElementById('monthSelect').value;
+  const dateValue = document.getElementById('dateInput').value;
+  const month = dateValue ? new Date(dateValue + 'T00:00:00').getMonth() + 1 : null;
   const climate = document.getElementById('climateSelect').value;
   const destinationText = document.getElementById('destinationInput').value.trim();
   const originText = document.getElementById('originInput').value.trim();
-  const budget = document.getElementById('budgetSelect').value;
 
   const cardsContainer = document.getElementById('cardsContainer');
   const resultCountSpan = document.getElementById('resultCount');
@@ -314,15 +302,6 @@ async function filterDestinations() {
       const s = destinationText.toLowerCase();
       if (!dest.name.toLowerCase().includes(s) && !dest.country.toLowerCase().includes(s)) return false;
     }
-    if (budget) {
-      const total = Math.max(
-        calculateTotal(dest.pricing, dest.idealDays, 'flight'),
-        calculateTotal(dest.pricing, dest.idealDays, 'bus')
-      );
-      if (budget === "baixo" && total > 4000) return false;
-      if (budget === "medio" && (total <= 4000 || total > 8000)) return false;
-      if (budget === "alto" && total <= 8000) return false;
-    }
     return true;
   });
 
@@ -330,7 +309,6 @@ async function filterDestinations() {
     try {
       title.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Buscando com IA...';
       resultCountSpan.textContent = 'IA trabalhando (10-15s)...';
-
       const aiDestination = await searchWithAI(destinationText);
       filtered = [aiDestination];
     } catch (error) {
@@ -339,7 +317,6 @@ async function filterDestinations() {
         <div class="empty-state" style="grid-column:1/-1;">
           <i class="fas fa-exclamation-triangle"></i><br>
           Não encontramos "${destinationText}".<br>
-          <span style="font-size:0.95rem;">A IA também não conseguiu. Tente outro nome.</span>
         </div>`;
       resultCountSpan.textContent = '0 destinos';
       title.innerHTML = '<i class="fas fa-suitcase-rolling"></i> Resultados da busca';
@@ -348,23 +325,15 @@ async function filterDestinations() {
   }
 
   filtered.sort((a, b) => {
-    const totalA = Math.min(
-      a.pricing.flight || Infinity,
-      a.pricing.bus || Infinity
-    );
-    const totalB = Math.min(
-      b.pricing.flight || Infinity,
-      b.pricing.bus || Infinity
-    );
+    const totalA = Math.min(a.pricing.flight || Infinity, a.pricing.bus || Infinity);
+    const totalB = Math.min(b.pricing.flight || Infinity, b.pricing.bus || Infinity);
     return totalA - totalB;
   });
 
   renderCards(filtered, false, originText);
 }
 
-/* ------------------------------------------------------------
-   RENDERIZAÇÃO DOS CARDS
-   ------------------------------------------------------------ */
+/* ---------- RENDERIZAÇÃO DOS CARDS ---------- */
 function renderCards(list, isAIPick = false, originText = '') {
   const container = document.getElementById('cardsContainer');
   const resultCountSpan = document.getElementById('resultCount');
@@ -377,9 +346,17 @@ function renderCards(list, isAIPick = false, originText = '') {
   }
 
   resultCountSpan.textContent = `${list.length} ${list.length === 1 ? 'destino' : 'destinos'}`;
-  title.innerHTML = isAIPick
+  
+  const dateValue = document.getElementById('dateInput').value;
+  const dateLabel = formatDateLabel(dateValue);
+  
+  const baseTitle = isAIPick
     ? '<i class="fas fa-wand-magic-sparkles"></i> Escolhas da IA'
     : '<i class="fas fa-suitcase-rolling"></i> Resultados da busca';
+  
+  title.innerHTML = dateLabel 
+    ? `${baseTitle} <span class="date-badge">📅 ${dateLabel}</span>` 
+    : baseTitle;
 
   let html = '';
   list.forEach(dest => {
@@ -392,14 +369,10 @@ function renderCards(list, isAIPick = false, originText = '') {
     const aiBadge = dest.fromAI ? '<span class="ai-badge">✨ IA</span>' : '';
     const originDisplay = originText || dest.origin || '';
 
-    // Totais
     const hasFlight = dest.pricing.flight !== null && dest.pricing.flight !== undefined;
     const hasBus = dest.pricing.bus !== null && dest.pricing.bus !== undefined;
     const totalFlight = hasFlight ? dest.pricing.flight + hotelTotal + dest.pricing.tours : null;
     const totalBus = hasBus ? dest.pricing.bus + hotelTotal + dest.pricing.tours : null;
-
-    // Recomendação
-    const recommended = dest.transport?.recommended || (hasFlight && hasBus ? 'both' : hasFlight ? 'flight' : 'bus');
 
     html += `
       <div class="card">
@@ -459,59 +432,107 @@ function renderCards(list, isAIPick = false, originText = '') {
           </div>
 
           <div class="card-actions">
-            <button class="details-btn" onclick="openModal(${dest.id})"><i class="fas fa-info-circle"></i> Detalhes</button>
-            <button class="packages-btn" onclick="openPackages(${dest.id})"><i class="fas fa-tags"></i> Ver pacotes</button>
+             <button class="details-btn" data-action="details" data-name="${dest.name}">
+             <i class="fas fa-info-circle"></i> Detalhes
+              </button>
+              <button class="packages-btn" data-action="packages" data-name="${dest.name}">
+             <i class="fas fa-tags"></i> Ver pacotes
+             </button>
           </div>
         </div>
       </div>`;
   });
   container.innerHTML = html;
-}
 
-/* ------------------------------------------------------------
-   PACOTES
-   ------------------------------------------------------------ */
+  // ✅ Adiciona event listeners via JS (mais seguro que onclick inline)
+  container.querySelectorAll('[data-action]').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    const action = e.currentTarget.dataset.action;
+    const name = e.currentTarget.dataset.name;
+    console.log('🖱️ Clique:', action, '| Nome:', name);
+    
+    if (action === 'details') {
+      openModalByName(name);
+    } else if (action === 'packages') {
+      openPackagesByName(name);
+    }
+  });
+});
+
+/* ---------- PACOTES ---------- */
 let currentDestination = null;
 let currentOffers = [];
 
 function openPackages(destId) {
-  const dest = destinations.find(d => d.id === destId);
-  if (!dest) return;
+  console.log('🔍 [openPackages] ID recebido:', destId);
+  
+  const idNum = parseInt(destId, 10);
+  let dest = destinations.find(d => d.id === idNum);
+  
+  // Fallback: se não achou por ID, tenta achar pelo nome salvo no DOM
+  if (!dest) {
+    // Última chance: tenta pegar do cache de IA
+    for (const [key, value] of aiCache.entries()) {
+      if (value.id === idNum || String(value.id) === String(destId)) {
+        dest = value;
+        break;
+      }
+    }
+  }
+  
+  if (!dest) {
+    console.error('❌ Destino não encontrado. IDs disponíveis:', destinations.map(d => d.id));
+    alert('Erro: destino não encontrado. Tente buscar novamente.');
+    return;
+  }
+
+  console.log('✅ Destino encontrado:', dest.name);
   currentDestination = dest;
 
-  const offers = generateOffers(dest);
-  currentOffers = offers;
+  try {
+    const offers = generateOffers(dest);
+    currentOffers = offers;
+    console.log(`✅ ${offers.length} ofertas geradas`);
 
-  document.getElementById('packagesDestName').textContent = `${dest.name}${dest.state ? ', ' + dest.state : ''}`;
-  document.getElementById('packagesCount').textContent = `${offers.length} ofertas`;
+    document.getElementById('packagesDestName').textContent = `${dest.name}${dest.state ? ', ' + dest.state : ''}`;
+    document.getElementById('packagesCount').textContent = `${offers.length} ofertas`;
 
-  const nights = dest.idealDays;
-  const flightOffers = offers.filter(o => o.type === 'flight');
-  const busOffers = offers.filter(o => o.type === 'bus');
-  const hotelOffers = offers.filter(o => o.type === 'hotel');
-  const packageOffers = offers.filter(o => o.type === 'package');
+    const nights = dest.idealDays;
+    const flightOffers = offers.filter(o => o.type === 'flight');
+    const busOffers = offers.filter(o => o.type === 'bus');
+    const hotelOffers = offers.filter(o => o.type === 'hotel');
+    const packageOffers = offers.filter(o => o.type === 'package');
 
-  const cheapestFlight = flightOffers.length ? Math.min(...flightOffers.map(o => o.price)) : null;
-  const cheapestBus = busOffers.length ? Math.min(...busOffers.map(o => o.price)) : null;
-  const cheapestHotel = hotelOffers.length ? Math.min(...hotelOffers.map(o => o.price)) : null;
-  const cheapestPackage = packageOffers.length ? Math.min(...packageOffers.map(o => o.price)) : null;
+    const cheapestFlight = flightOffers.length ? Math.min(...flightOffers.map(o => o.price)) : null;
+    const cheapestBus = busOffers.length ? Math.min(...busOffers.map(o => o.price)) : null;
+    const cheapestHotel = hotelOffers.length ? Math.min(...hotelOffers.map(o => o.price)) : null;
+    const cheapestPackage = packageOffers.length ? Math.min(...packageOffers.map(o => o.price)) : null;
 
-  document.getElementById('packagesSummary').innerHTML = `
-    ${cheapestFlight ? `<div class="summary-card"><i class="fas fa-plane"></i><div class="info"><span class="label">Voo mais barato</span><span class="value">R$ ${cheapestFlight.toLocaleString('pt-BR')}</span></div></div>` : ''}
-    ${cheapestBus ? `<div class="summary-card"><i class="fas fa-bus"></i><div class="info"><span class="label">Ônibus mais barato</span><span class="value">R$ ${cheapestBus.toLocaleString('pt-BR')}</span></div></div>` : ''}
-    ${cheapestHotel ? `<div class="summary-card"><i class="fas fa-hotel"></i><div class="info"><span class="label">Hotel mais barato (${nights}n)</span><span class="value">R$ ${(cheapestHotel * nights).toLocaleString('pt-BR')}</span></div></div>` : ''}
-    ${cheapestPackage ? `<div class="summary-card"><i class="fas fa-box-open"></i><div class="info"><span class="label">Pacote completo</span><span class="value">R$ ${cheapestPackage.toLocaleString('pt-BR')}</span></div></div>` : ''}
-  `;
+    document.getElementById('packagesSummary').innerHTML = `
+      ${cheapestFlight ? `<div class="summary-card"><i class="fas fa-plane"></i><div class="info"><span class="label">Voo mais barato</span><span class="value">R$ ${cheapestFlight.toLocaleString('pt-BR')}</span></div></div>` : ''}
+      ${cheapestBus ? `<div class="summary-card"><i class="fas fa-bus"></i><div class="info"><span class="label">Ônibus mais barato</span><span class="value">R$ ${cheapestBus.toLocaleString('pt-BR')}</span></div></div>` : ''}
+      ${cheapestHotel ? `<div class="summary-card"><i class="fas fa-hotel"></i><div class="info"><span class="label">Hotel mais barato (${nights}n)</span><span class="value">R$ ${(cheapestHotel * nights).toLocaleString('pt-BR')}</span></div></div>` : ''}
+      ${cheapestPackage ? `<div class="summary-card"><i class="fas fa-box-open"></i><div class="info"><span class="label">Pacote completo</span><span class="value">R$ ${cheapestPackage.toLocaleString('pt-BR')}</span></div></div>` : ''}
+    `;
 
-  renderOffers(offers, 'all');
-  showScreen('packagesScreen');
+    document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+    document.querySelector('.tab-btn[data-tab="all"]')?.classList.add('active');
+
+    renderOffers(offers, 'all');
+    showScreen('packagesScreen');
+    console.log('✅ Tela de pacotes aberta!');
+  } catch (error) {
+    console.error('❌ Erro ao abrir pacotes:', error);
+    alert('Erro ao abrir pacotes: ' + error.message);
+  }
 }
 
 function generateOffers(dest) {
   const offers = [];
   const nights = dest.idealDays;
+  let offerCounter = 0;
 
-  // VOOS (apenas se disponível)
+  // VOOS
   if (dest.pricing.flight !== null && dest.pricing.flight !== undefined) {
     const airlinesList = getAirlineByCountry(dest.country);
     airlinesList.forEach(airline => {
@@ -522,6 +543,7 @@ function generateOffers(dest) {
       const stops = Math.floor(Math.random() * 3);
 
       offers.push({
+        id: ++offerCounter,
         type: 'flight',
         airline,
         name: `${airline.name} · ${dest.name}`,
@@ -533,7 +555,7 @@ function generateOffers(dest) {
     });
   }
 
-  // ÔNIBUS (apenas se disponível)
+  // ÔNIBUS
   if (dest.pricing.bus !== null && dest.pricing.bus !== undefined) {
     const shuffledBus = [...busCompanies].sort(() => Math.random() - 0.5).slice(0, 5);
     shuffledBus.forEach(company => {
@@ -543,6 +565,7 @@ function generateOffers(dest) {
       const duration = Math.round(2 + Math.random() * 12);
 
       offers.push({
+        id: ++offerCounter,
         type: 'bus',
         company,
         name: `${company.name} · ${dest.name}`,
@@ -562,6 +585,7 @@ function generateOffers(dest) {
     const oldPrice = Math.round(pricePerNight * 1.3);
 
     offers.push({
+      id: ++offerCounter,
       type: 'hotel',
       chain: hotel,
       name: `${hotel.name} · ${dest.name}`,
@@ -583,13 +607,13 @@ function generateOffers(dest) {
   ];
 
   packageProviders.forEach(provider => {
-    // Pacote com avião
     if (dest.pricing.flight !== null && dest.pricing.flight !== undefined) {
       const variation = 0.85 + Math.random() * 0.4;
       const price = Math.round((dest.pricing.flight + dest.pricing.hotelPerNight * nights + dest.pricing.tours) * variation);
       const oldPrice = Math.round(price * 1.3);
 
       offers.push({
+        id: ++offerCounter,
         type: 'package',
         chain: { name: provider.name, color: provider.color, logo: provider.logo },
         name: `Pacote ${provider.name} (avião) · ${dest.name}`,
@@ -600,13 +624,13 @@ function generateOffers(dest) {
       });
     }
 
-    // Pacote com ônibus
     if (dest.pricing.bus !== null && dest.pricing.bus !== undefined) {
       const variation = 0.85 + Math.random() * 0.3;
       const price = Math.round((dest.pricing.bus + dest.pricing.hotelPerNight * nights + dest.pricing.tours) * variation);
       const oldPrice = Math.round(price * 1.25);
 
       offers.push({
+        id: ++offerCounter,
         type: 'package',
         chain: { name: provider.name, color: provider.color, logo: provider.logo },
         name: `Pacote ${provider.name} (ônibus) · ${dest.name}`,
@@ -646,6 +670,30 @@ function renderOffers(offers, filter) {
     const logo = offer.airline?.logo || offer.company?.logo || offer.chain?.logo || "?";
     const bookingUrl = generateBookingUrl(offer, currentDestination);
 
+    let actionButtons = '';
+    if (offer.type === 'flight') {
+      actionButtons = `
+        <button class="offer-buy" data-action="flight-details" data-offer-id="${offer.id}">
+          <i class="fas fa-info-circle"></i> Detalhes
+        </button>
+        <a href="${bookingUrl}" target="_blank" rel="noopener noreferrer" class="offer-buy secondary">
+          <i class="fas fa-external-link-alt"></i> Reservar
+        </a>`;
+    } else if (offer.type === 'hotel') {
+      actionButtons = `
+        <button class="offer-buy" data-action="hotel-details" data-offer-id="${offer.id}">
+          <i class="fas fa-info-circle"></i> Detalhes
+        </button>
+        <a href="${bookingUrl}" target="_blank" rel="noopener noreferrer" class="offer-buy secondary">
+          <i class="fas fa-external-link-alt"></i> Reservar
+        </a>`;
+    } else {
+      actionButtons = `
+        <a href="${bookingUrl}" target="_blank" rel="noopener noreferrer" class="offer-buy">
+          <i class="fas fa-external-link-alt"></i> Reservar
+        </a>`;
+    }
+
     return `
       <div class="offer-card">
         <div class="offer-logo" style="background: ${color}">${logo}</div>
@@ -668,20 +716,195 @@ function renderOffers(offers, filter) {
           ${offer.oldPrice ? `<span class="price-old">R$ ${offer.oldPrice.toLocaleString('pt-BR')}</span>` : ''}
           <span class="price-value">R$ ${offer.price.toLocaleString('pt-BR')}</span>
           <span class="price-label">${offer.type === 'hotel' ? 'por noite' : 'por pessoa'}</span>
-          <a href="${bookingUrl}" target="_blank" rel="noopener noreferrer" class="offer-buy">
-            <i class="fas fa-external-link-alt"></i> Reservar
-          </a>
+          ${actionButtons}
         </div>
       </div>
     `;
   }).join('');
+
+  // ✅ Event listeners para botões de detalhes
+  container.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const action = e.currentTarget.dataset.action;
+      const offerId = parseInt(e.currentTarget.dataset.offerId, 10);
+      if (action === 'flight-details') openFlightModal(offerId);
+      if (action === 'hotel-details') openHotelModal(offerId);
+    });
+  });
 }
 
-/* ------------------------------------------------------------
-   IA — ROTEIRO
-   ------------------------------------------------------------ */
+/* ---------- MODAL DE VOO ---------- */
+function openFlightModal(offerId) {
+  const offer = currentOffers.find(o => o.id === offerId);
+  if (!offer || !offer.airline) return;
+
+  const airline = offer.airline;
+  const dest = currentDestination;
+
+  const departureHour = 6 + Math.floor(Math.random() * 14);
+  const departureMin = [0, 15, 30, 45][Math.floor(Math.random() * 4)];
+  const arrivalHour = (departureHour + offer.duration) % 24;
+  const arrivalMin = [0, 15, 30, 45][Math.floor(Math.random() * 4)];
+
+  const pad = (n) => String(n).padStart(2, '0');
+
+  const stopsList = offer.stops === 0
+    ? ['Voo direto ✈️']
+    : Array.from({ length: offer.stops }, () => 
+        `${['Guarulhos', 'Brasília', 'Confins', 'Recife', 'Salvador', 'Curitiba'][Math.floor(Math.random() * 6)]} (${1 + Math.floor(Math.random() * 2)}h de conexão)`
+      );
+
+  document.getElementById('modalContent').innerHTML = `
+    <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    <div class="modal-flight-header" style="background: linear-gradient(135deg, ${airline.color}, #001a4d);">
+      <div class="modal-flight-logo" style="background: white; color: ${airline.color};">${airline.logo}</div>
+      <div style="flex:1;">
+        <h3 style="color:white; margin:0;">${airline.name}</h3>
+        <p style="color:#ffffffcc; margin:0.3rem 0 0; font-size:0.9rem;">
+          <i class="fas fa-star"></i> ${airline.rating}/10 · ${offer.stops === 0 ? 'Voo direto' : offer.stops + ' parada(s)'}
+        </p>
+      </div>
+      <div class="modal-flight-price">
+        <span style="color:#ffffffcc; font-size:0.7rem;">POR PESSOA</span>
+        <strong style="color:white;">R$ ${offer.price.toLocaleString('pt-BR')}</strong>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <h4><i class="fas fa-route"></i> Trajeto</h4>
+      <div class="flight-route">
+        <div class="flight-point">
+          <div class="flight-time">${pad(departureHour)}:${pad(departureMin)}</div>
+          <div class="flight-city">Origem</div>
+        </div>
+        <div class="flight-line">
+          <i class="fas fa-plane"></i>
+          <span>${offer.duration}h</span>
+        </div>
+        <div class="flight-point">
+          <div class="flight-time">${pad(arrivalHour)}:${pad(arrivalMin)}</div>
+          <div class="flight-city">${dest.name}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <h4><i class="fas fa-exchange-alt"></i> Escalas</h4>
+      <ul class="included-list">
+        ${stopsList.map(s => `<li><i class="fas fa-circle-dot"></i> ${s}</li>`).join('')}
+      </ul>
+    </div>
+
+    <div class="modal-section">
+      <h4><i class="fas fa-suitcase"></i> Bagagem inclusa</h4>
+      <ul class="included-list">
+        <li><i class="fas fa-check"></i> Mochila ou bolsa (10kg)</li>
+        <li><i class="fas fa-check"></i> ${airline.perks[0] || 'Bagagem 23kg'}</li>
+        <li><i class="fas fa-check"></i> ${airline.perks[1] || 'Assento padrão'}</li>
+      </ul>
+    </div>
+
+    <div class="modal-total">
+      <span>Total (ida e volta)</span>
+      <strong>R$ ${(offer.price * 2).toLocaleString('pt-BR')}</strong>
+      <small>por pessoa</small>
+    </div>
+
+    <a href="${airline.url}" target="_blank" rel="noopener noreferrer" class="offer-buy" style="width:100%;margin-top:1rem;padding:1rem;text-align:center;text-decoration:none;">
+      <i class="fas fa-external-link-alt"></i> Reservar no site da ${airline.name}
+    </a>
+  `;
+
+  document.getElementById('modalOverlay').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+/* ---------- MODAL DE HOTEL ---------- */
+function openHotelModal(offerId) {
+  const offer = currentOffers.find(o => o.id === offerId);
+  if (!offer || !offer.chain) return;
+
+  const hotel = offer.chain;
+  const dest = currentDestination;
+  const nights = offer.nights;
+
+  const hotelPhotos = [
+    `https://source.unsplash.com/featured/?hotel,room,luxury,${encodeURIComponent(dest.name)}`,
+    `https://source.unsplash.com/featured/?hotel,lobby,interior`,
+    `https://source.unsplash.com/featured/?hotel,pool,resort`,
+    `https://source.unsplash.com/featured/?hotel,bedroom,modern`
+  ];
+
+  document.getElementById('modalContent').innerHTML = `
+    <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    <div class="modal-hotel-gallery">
+      <div class="hotel-main-photo" style="background-image: url('${hotelPhotos[0]}');"></div>
+      <div class="hotel-thumbs">
+        ${hotelPhotos.slice(1).map(p => `<div class="hotel-thumb" style="background-image: url('${p}');"></div>`).join('')}
+      </div>
+    </div>
+
+    <div class="modal-hotel-header">
+      <div class="modal-hotel-logo" style="background: ${hotel.color};">${hotel.logo}</div>
+      <div style="flex:1;">
+        <h3 style="margin:0;font-size:1.3rem;"><i class="fas fa-hotel" style="color:#ff7b2c"></i> ${hotel.name}</h3>
+        <p style="color:#7a8ba8; margin:0.3rem 0 0; font-size:0.9rem;">${dest.name}${dest.state ? ', ' + dest.state : ''}</p>
+        <div style="margin-top:0.5rem;">
+          <span class="hotel-stars">${'⭐'.repeat(Math.max(3, Math.round(hotel.rating / 2)))}</span>
+          <span style="color:#7a8ba8; font-size:0.85rem;"> ${hotel.rating}/10 · ${hotel.type}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <h4><i class="fas fa-bed"></i> Quartos disponíveis</h4>
+      <div class="room-options">
+        <div class="room-option">
+          <div class="room-info"><strong>Quarto Standard</strong><span>1 cama de casal · 20m² · Café incluso</span></div>
+          <div class="room-price">R$ ${Math.round(offer.price * 0.9).toLocaleString('pt-BR')}</div>
+        </div>
+        <div class="room-option">
+          <div class="room-info"><strong>Quarto Superior</strong><span>1 cama king · 28m² · Café + Wi-Fi</span></div>
+          <div class="room-price">R$ ${offer.price.toLocaleString('pt-BR')}</div>
+        </div>
+        <div class="room-option">
+          <div class="room-info"><strong>Suíte Master</strong><span>1 cama king + sala · 45m² · Café + Spa</span></div>
+          <div class="room-price">R$ ${Math.round(offer.price * 1.6).toLocaleString('pt-BR')}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <h4><i class="fas fa-concierge-bell"></i> Comodidades</h4>
+      <div class="amenities-grid">
+        <div class="amenity"><i class="fas fa-wifi"></i> Wi-Fi grátis</div>
+        <div class="amenity"><i class="fas fa-swimming-pool"></i> Piscina</div>
+        <div class="amenity"><i class="fas fa-utensils"></i> Restaurante</div>
+        <div class="amenity"><i class="fas fa-dumbbell"></i> Academia</div>
+        <div class="amenity"><i class="fas fa-spa"></i> Spa</div>
+        <div class="amenity"><i class="fas fa-parking"></i> Estacionamento</div>
+      </div>
+    </div>
+
+    <div class="modal-total">
+      <span>${nights} noites</span>
+      <strong>R$ ${(offer.price * nights).toLocaleString('pt-BR')}</strong>
+      <small>R$ ${offer.price.toLocaleString('pt-BR')}/noite · 2 hóspedes</small>
+    </div>
+
+    <a href="${generateBookingUrl(offer, dest)}" target="_blank" rel="noopener noreferrer" class="offer-buy" style="width:100%;margin-top:1rem;padding:1rem;text-align:center;background:${hotel.color};text-decoration:none;">
+      <i class="fas fa-external-link-alt"></i> Reservar no ${hotel.name}
+    </a>
+  `;
+
+  document.getElementById('modalOverlay').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+/* ---------- IA — ROTEIRO ---------- */
 function aiGenerateItinerary() {
-  const month = document.getElementById('monthSelect').value;
+  const dateValue = document.getElementById('dateInput').value;
+  const month = dateValue ? new Date(dateValue + 'T00:00:00').getMonth() + 1 : null;
   const climate = document.getElementById('climateSelect').value;
   const destinationText = document.getElementById('destinationInput').value.trim();
   const budget = document.getElementById('budgetSelect').value;
@@ -722,14 +945,10 @@ function aiGenerateItinerary() {
 
   return {
     destinations: chosen,
-    totalDays,
-    totalFlight,
-    totalBus,
-    totalHotel,
-    totalTours,
+    totalDays, totalFlight, totalBus, totalHotel, totalTours,
     grandTotalFlight: totalFlight + totalHotel + totalTours,
     grandTotalBus: totalBus + totalHotel + totalTours,
-    month, climate, budget
+    dateValue, month, climate, budget
   };
 }
 
@@ -737,7 +956,15 @@ function renderItinerary(itinerary) {
   const summary = document.getElementById('itinerarySummary');
   const timeline = document.getElementById('itineraryTimeline');
 
-  const monthLabel = itinerary.month ? getMonthName(Number(itinerary.month)) : "Flexível";
+  let monthLabel = "Flexível";
+  if (itinerary.dateValue) {
+    const d = new Date(itinerary.dateValue + 'T00:00:00');
+    const monthsFull = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    monthLabel = `${d.getDate()} de ${monthsFull[d.getMonth()]} de ${d.getFullYear()}`;
+  } else if (itinerary.month) {
+    monthLabel = getMonthName(Number(itinerary.month));
+  }
+  
   const climateLabel = itinerary.climate ? { calor:"Quente", frio:"Frio", ameno:"Ameno", tropical:"Tropical", seco:"Seco" }[itinerary.climate] : "Variado";
 
   summary.innerHTML = `
@@ -856,12 +1083,18 @@ function runAISearch() {
   }, 1500);
 }
 
-/* ------------------------------------------------------------
-   MODAL
-   ------------------------------------------------------------ */
-function openModal(id) {
-  const dest = destinations.find(d => d.id === id);
-  if (!dest) return;
+/* ---------- MODAL PRINCIPAL (DETALHES DO DESTINO) ---------- */
+function openModalByName(name) {
+  console.log('🔍 [openModalByName] Nome:', name);
+  const dest = destinations.find(d => d.name === name);
+  if (!dest) {
+    alert('Destino não encontrado: ' + name);
+    return;
+  }
+  openModal(dest.id);
+}
+  
+  console.log('✅ Detalhes de:', dest.name);
 
   const nights = dest.idealDays;
   const hotelTotal = calculateHotelTotal(dest.pricing, nights);
@@ -943,9 +1176,7 @@ function closeModal() {
   document.body.style.overflow = '';
 }
 
-/* ------------------------------------------------------------
-   INICIALIZAÇÃO
-   ------------------------------------------------------------ */
+/* ---------- INICIALIZAÇÃO ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('searchBtn').addEventListener('click', filterDestinations);
   document.getElementById('destinationInput').addEventListener('keypress', (e) => {

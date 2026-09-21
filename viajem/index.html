@@ -10,11 +10,8 @@
 </head>
 <body>
 
-<!-- ============================================
-     TELA INICIAL (busca)
-     ============================================ -->
+<!-- TELA INICIAL (busca) -->
 <div class="container" id="homeScreen">
-
   <header class="header">
     <div class="logo">
       <i class="fas fa-map-marked-alt"></i> Via<span>Gen</span> <small>AI</small>
@@ -39,22 +36,8 @@
       </div>
 
       <div class="input-group">
-        <label><i class="fas fa-calendar-alt"></i> Mês</label>
-        <select id="monthSelect">
-          <option value="">Qualquer</option>
-          <option value="1">Janeiro</option>
-          <option value="2">Fevereiro</option>
-          <option value="3">Março</option>
-          <option value="4">Abril</option>
-          <option value="5">Maio</option>
-          <option value="6">Junho</option>
-          <option value="7">Julho</option>
-          <option value="8">Agosto</option>
-          <option value="9">Setembro</option>
-          <option value="10">Outubro</option>
-          <option value="11">Novembro</option>
-          <option value="12">Dezembro</option>
-        </select>
+        <label><i class="fas fa-calendar-alt"></i> Data da viagem</label>
+        <input type="date" id="dateInput" min="2025-01-01" max="2030-12-31">
       </div>
 
       <div class="input-group">
@@ -73,9 +56,10 @@
         <label><i class="fas fa-wallet"></i> Orçamento</label>
         <select id="budgetSelect">
           <option value="">Qualquer</option>
-          <option value="baixo">Econômico (até R$ 4.000)</option>
-          <option value="medio">Médio (R$ 4.000 - R$ 8.000)</option>
-          <option value="alto">Premium (acima de R$ 8.000)</option>
+          <option value="baixo">Econômico (até R$ 5.000)</option>
+          <option value="medio">Médio (R$ 5.000 - R$ 15.000)</option>
+          <option value="alto">Premium (R$ 15.000 - R$ 30.000)</option>
+          <option value="luxo">Luxo (acima de R$ 30.000)</option>
         </select>
       </div>
 
@@ -97,9 +81,7 @@
   </footer>
 </div>
 
-<!-- ============================================
-     TELA CHEIA DE RESULTADOS
-     ============================================ -->
+<!-- TELA CHEIA DE RESULTADOS -->
 <div class="fullscreen-results" id="resultsScreen">
   <div class="fullscreen-header">
     <div class="fullscreen-header-left">
@@ -132,9 +114,7 @@
   </div>
 </div>
 
-<!-- ============================================
-     TELA DE PACOTES
-     ============================================ -->
+<!-- TELA DE PACOTES -->
 <div class="fullscreen-results packages-screen" id="packagesScreen">
   <div class="fullscreen-header">
     <div class="fullscreen-header-left">
@@ -153,21 +133,11 @@
   <div class="packages-summary" id="packagesSummary"></div>
 
   <div class="packages-tabs">
-    <button class="tab-btn active" data-tab="all">
-      <i class="fas fa-list"></i> Tudo
-    </button>
-    <button class="tab-btn" data-tab="flights">
-      <i class="fas fa-plane"></i> Voos
-    </button>
-    <button class="tab-btn" data-tab="bus">
-      <i class="fas fa-bus"></i> Ônibus
-    </button>
-    <button class="tab-btn" data-tab="hotels">
-      <i class="fas fa-hotel"></i> Hotéis
-    </button>
-    <button class="tab-btn" data-tab="packages">
-      <i class="fas fa-box-open"></i> Pacotes completos
-    </button>
+    <button class="tab-btn active" data-tab="all"><i class="fas fa-list"></i> Tudo</button>
+    <button class="tab-btn" data-tab="flights"><i class="fas fa-plane"></i> Voos</button>
+    <button class="tab-btn" data-tab="bus"><i class="fas fa-bus"></i> Ônibus</button>
+    <button class="tab-btn" data-tab="hotels"><i class="fas fa-hotel"></i> Hotéis</button>
+    <button class="tab-btn" data-tab="packages"><i class="fas fa-box-open"></i> Pacotes completos</button>
   </div>
 
   <div class="fullscreen-body">
@@ -175,18 +145,14 @@
   </div>
 </div>
 
-<!-- ============================================
-     TELA DE ROTEIRO IA
-     ============================================ -->
+<!-- TELA DE ROTEIRO IA -->
 <div class="fullscreen-results itinerary-screen" id="itineraryScreen">
   <div class="fullscreen-header">
     <div class="fullscreen-header-left">
       <button class="back-btn" id="backFromItinerary">
         <i class="fas fa-arrow-left"></i> Voltar
       </button>
-      <h2>
-        <i class="fas fa-route"></i> Sua viagem personalizada pela IA
-      </h2>
+      <h2><i class="fas fa-route"></i> Sua viagem personalizada pela IA</h2>
     </div>
     <div class="fullscreen-header-right">
       <button class="ai-btn small" id="regenerateBtn">
