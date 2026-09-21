@@ -1,5 +1,5 @@
 /* ============================================================
-   VIAGEN AI - SCRIPT COMPLETO COM DATA ENTRADA/SAÍDA
+   VIAGEN AI - SCRIPT COMPLETO
    ============================================================ */
 
 const API_URL = 'https://viagen.onrender.com';
@@ -140,24 +140,79 @@ function calculateNights(startDate, endDate) {
   return diffDays > 0 ? diffDays : null;
 }
 
+/* ✅ RETORNA AS DATAS CORRETAS CONFORME O MODO ATIVO */
+function getSearchDates() {
+  const dateMode = document.querySelector('.date-tab.active')?.dataset.mode || 'dates';
+
+  if (dateMode === 'dates') {
+    const dateValue = document.getElementById('dateInput')?.value || '';
+    const dateEndValue = document.getElementById('dateEndInput')?.value || '';
+    return {
+      date: dateValue,
+      dateEnd: dateEndValue,
+      nights: calculateNights(dateValue, dateEndValue)
+    };
+  } else {
+    const nights = parseInt(document.getElementById('nightsSelect')?.value) || 7;
+    const approxDate = document.getElementById('dateApproxInput')?.value || '';
+
+    let dateStart = approxDate || '';
+    let dateEnd = '';
+
+    if (approxDate) {
+      const end = new Date(approxDate + 'T00:00:00');
+      end.setDate(end.getDate() + nights);
+      dateEnd = end.toISOString().split('T')[0];
+    }
+
+    return {
+      date: dateStart,
+      dateEnd: dateEnd,
+      nights: nights
+    };
+  }
+}
+
+
 /* ✅ ATUALIZAR INFO DE NOITES */
 function updateNightsInfo() {
   const startDate = document.getElementById('dateInput').value;
   const endDate = document.getElementById('dateEndInput').value;
   const nightsInfoGroup = document.getElementById('nightsInfoGroup');
   const nightsInfo = document.getElementById('nightsInfo');
+  const dateRow = document.querySelector('.input-row:has(#dateInput)');
   
   if (startDate && endDate) {
     const nights = calculateNights(startDate, endDate);
     if (nights && nights > 0) {
       nightsInfoGroup.style.display = 'block';
       nightsInfo.textContent = `${nights} ${nights === 1 ? 'noite' : 'noites'}`;
+      if (dateRow) dateRow.classList.add('input-row-dates');
     } else {
       nightsInfoGroup.style.display = 'none';
+      if (dateRow) dateRow.classList.remove('input-row-dates');
     }
   } else {
     nightsInfoGroup.style.display = 'none';
+    if (dateRow) dateRow.classList.remove('input-row-dates');
   }
+}
+/* ✅ Retorna o valor do orçamento (número ou vazio) */
+function getBudgetValue() {
+  const input = document.getElementById('budgetInput');
+  if (!input) return '';
+  
+  const raw = input.value.trim();
+  if (!raw) return '';
+  
+  const value = parseInt(raw);
+  if (isNaN(value) || value <= 0) return '';
+  
+  // Classifica em faixa
+  if (value <= 5000) return 'baixo';
+  if (value <= 15000) return 'medio';
+  if (value <= 30000) return 'alto';
+  return 'luxo';
 }
 
 function getAirlineByCountry(country) {
@@ -237,19 +292,19 @@ async function searchWithAI(query) {
   if (aiCache.has(normalized)) return aiCache.get(normalized);
 
   const origin = document.getElementById('originInput')?.value.trim() || '';
-  const dateValue = document.getElementById('dateInput')?.value || '';
-  const dateEndValue = document.getElementById('dateEndInput')?.value || '';
+  const searchDates = getSearchDates();
 
   const response = await fetch(`${API_URL}/api/search-destination`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       query, origin,
-      date: dateValue,
-      dateEnd: dateEndValue,
-      nights: calculateNights(dateValue, dateEndValue),
+      date: searchDates.date,
+      dateEnd: searchDates.dateEnd,
+      nights: searchDates.nights,
       climate: document.getElementById('climateSelect')?.value || '',
-      budget: document.getElementById('budgetSelect')?.value || ''
+      budget: getBudgetValue(),
+      budgetRaw: document.getElementById('budgetInput')?.value || ''
     })
   });
 
@@ -298,13 +353,16 @@ async function searchWithAI(query) {
 
 /* ---------- BUSCA MANUAL ---------- */
 async function filterDestinations() {
-  const dateValue = document.getElementById('dateInput').value;
-  const dateEndValue = document.getElementById('dateEndInput').value;
+  const searchDates = getSearchDates();
+  const dateValue = searchDates.date;
+  const dateEndValue = searchDates.dateEnd;
   const month = dateValue ? new Date(dateValue + 'T00:00:00').getMonth() + 1 : null;
-  const nights = calculateNights(dateValue, dateEndValue);
+  const nights = searchDates.nights;
   const climate = document.getElementById('climateSelect').value;
   const destinationText = document.getElementById('destinationInput').value.trim();
   const originText = document.getElementById('originInput').value.trim();
+  const budget = getBudgetValue();
+  const budgetRaw = document.getElementById('budgetInput')?.value || '';
 
   const cardsContainer = document.getElementById('cardsContainer');
   const resultCountSpan = document.getElementById('resultCount');
@@ -455,10 +513,11 @@ function renderCards(list, isAIPick = false, originText = '') {
 
   resultCountSpan.textContent = `${list.length} ${list.length === 1 ? 'destino' : 'destinos'}`;
   
-  const dateValue = document.getElementById('dateInput').value;
-  const dateEndValue = document.getElementById('dateEndInput').value;
+  const searchDates = getSearchDates();
+  const dateValue = searchDates.date;
+  const dateEndValue = searchDates.dateEnd;
   const dateLabel = formatDateLabel(dateValue);
-  const nights = calculateNights(dateValue, dateEndValue);
+  const nights = searchDates.nights;
   
   const baseTitle = isAIPick
     ? '<i class="fas fa-wand-magic-sparkles"></i> Escolhas da IA'
@@ -466,7 +525,7 @@ function renderCards(list, isAIPick = false, originText = '') {
   
   const badgeText = dateLabel && nights
     ? `📅 ${dateLabel} · 🌙 ${nights}n`
-    : (dateLabel ? `📅 ${dateLabel}` : '');
+    : (nights ? `🌙 ${nights} noites` : (dateLabel ? `📅 ${dateLabel}` : ''));
   
   title.innerHTML = badgeText 
     ? `${baseTitle} <span class="date-badge">${badgeText}</span>` 
@@ -560,7 +619,6 @@ function renderCards(list, isAIPick = false, originText = '') {
   });
   container.innerHTML = html;
 
-  // ✅ Detecta imagens quebradas
   container.querySelectorAll('.card-img').forEach(div => {
     const bgImage = div.style.backgroundImage;
     const match = bgImage.match(/url\(['"]?([^'"]+)['"]?\)/);
@@ -1030,11 +1088,12 @@ function openHotelModal(offerId) {
 
 /* ---------- IA - ROTEIRO ---------- */
 async function aiGenerateItinerary() {
-  const dateValue = document.getElementById('dateInput').value;
-  const dateEndValue = document.getElementById('dateEndInput').value;
+  const searchDates = getSearchDates();
+  const dateValue = searchDates.date;
+  const dateEndValue = searchDates.dateEnd;
   const month = dateValue ? new Date(dateValue + 'T00:00:00').getMonth() + 1 : null;
   const monthName = month ? getMonthName(month) : '';
-  const nights = calculateNights(dateValue, dateEndValue);
+  const nights = searchDates.nights;
   const climate = document.getElementById('climateSelect').value;
   const destinationText = document.getElementById('destinationInput').value.trim();
   const originText = document.getElementById('originInput').value.trim();
@@ -1153,7 +1212,8 @@ async function aiGenerateItinerary() {
 
 /* Fallback: gera roteiro da base local */
 async function generateLocalItinerary(dateValue, month, climate, destinationText, budget) {
-  const nights = calculateNights(dateValue, document.getElementById('dateEndInput').value);
+  const searchDates = getSearchDates();
+  const nights = searchDates.nights;
   
   let pool = destinations.filter(dest => {
     if (climate && dest.climate !== climate) return false;
@@ -1214,7 +1274,7 @@ async function generateLocalItinerary(dateValue, month, climate, destinationText
     totalDays, totalFlight, totalBus, totalHotel, totalTours,
     grandTotalFlight: totalFlight + totalHotel + totalTours,
     grandTotalBus: totalBus + totalHotel + totalTours,
-    dateValue, dateEndValue: document.getElementById('dateEndInput').value, nights, month, climate, budget
+    dateValue, dateEndValue: searchDates.dateEnd, nights, month, climate, budget
   };
 }
 
@@ -1237,6 +1297,8 @@ function renderItinerary(itinerary) {
     
     monthLabel = `${start.getDate()} ${monthsShort[start.getMonth()]} → ${end.getDate()} ${monthsShort[end.getMonth()]}`;
     if (nights) monthLabel += ` (${nights}n)`;
+  } else if (itinerary.nights) {
+    monthLabel = `${itinerary.nights} noites`;
   } else if (itinerary.dateValue) {
     const d = new Date(itinerary.dateValue + 'T00:00:00');
     const monthsFull = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -1275,7 +1337,6 @@ function renderItinerary(itinerary) {
     const destTotalFlight = hasFlight ? dest.pricing.flight + (dest.pricing.hotelPerNight * dest.idealDays) + dest.pricing.tours : null;
     const destTotalBus = hasBus ? dest.pricing.bus + (dest.pricing.hotelPerNight * dest.idealDays) + dest.pricing.tours : null;
 
-    // ✅ Usa as datas reais se disponíveis
     let dates;
     if (itinerary.dateValue && itinerary.dateEndValue) {
       dates = { checkin: itinerary.dateValue, checkout: itinerary.dateEndValue };
@@ -1356,7 +1417,6 @@ function renderItinerary(itinerary) {
   `;
   timeline.innerHTML = html;
 
-  // ✅ Detecta imagens quebradas no timeline
   timeline.querySelectorAll('.timeline-item-img').forEach(div => {
     const bgImage = div.style.backgroundImage;
     const match = bgImage.match(/url\(['"]?([^'"]+)['"]?\)/);
@@ -1416,9 +1476,10 @@ function openModal(id) {
     return;
   }
 
-  const dateValue = document.getElementById('dateInput')?.value || '';
-  const dateEndValue = document.getElementById('dateEndInput')?.value || '';
-  const nights = calculateNights(dateValue, dateEndValue) || dest.idealDays;
+  const searchDates = getSearchDates();
+  const dateValue = searchDates.date;
+  const dateEndValue = searchDates.dateEnd;
+  const nights = searchDates.nights || dest.idealDays;
   
   const hotelTotal = calculateHotelTotal(dest.pricing, nights);
   const hasFlight = dest.pricing.flight !== null && dest.pricing.flight !== undefined;
@@ -1511,6 +1572,113 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('destinationInput').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); filterDestinations(); }
   });
+    /* ✅ PRESETS DE ORÇAMENTO */
+  const budgetInput = document.getElementById('budgetInput');
+  const budgetChips = document.querySelectorAll('.budget-chip');
+
+  budgetChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const value = chip.dataset.value;
+      
+      // Se já está ativo, limpa
+      if (chip.classList.contains('active')) {
+        chip.classList.remove('active');
+        budgetInput.value = '';
+        return;
+      }
+      
+      // Ativa só esse
+      budgetChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      budgetInput.value = value;
+      
+      console.log(`💰 Orçamento: R$ ${value}`);
+    });
+  });
+
+  // Quando o usuário digita, atualiza os chips
+  if (budgetInput) {
+    budgetInput.addEventListener('input', () => {
+      const val = parseInt(budgetInput.value);
+      budgetChips.forEach(chip => {
+        chip.classList.toggle('active', parseInt(chip.dataset.value) === val);
+      });
+    });
+  }
+  /* ✅ ABAS DE MODO: Datas vs Noites */
+  const dateTabs = document.querySelectorAll('.date-tab');
+  const datesRow = document.getElementById('datesRow');
+  const nightsRow = document.getElementById('nightsRow');
+  const nightsSelect = document.getElementById('nightsSelect');
+  const dateApproxInput = document.getElementById('dateApproxInput');
+  const nightsTextMode = document.getElementById('nightsTextMode');
+
+  let currentDateMode = 'dates';
+  let savedDateValues = { date: '', dateEnd: '' };
+  let savedNightsValue = '7';
+  let savedApproxValue = '';
+
+  dateTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const mode = tab.dataset.mode;
+      if (mode === currentDateMode) return;
+
+      if (currentDateMode === 'dates') {
+        savedDateValues.date = document.getElementById('dateInput').value;
+        savedDateValues.dateEnd = document.getElementById('dateEndInput').value;
+      } else {
+        savedNightsValue = nightsSelect.value;
+        savedApproxValue = dateApproxInput.value;
+      }
+
+      dateTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentDateMode = mode;
+
+      if (mode === 'dates') {
+        datesRow.style.display = 'grid';
+        nightsRow.style.display = 'none';
+
+        document.getElementById('dateInput').value = savedDateValues.date;
+        document.getElementById('dateEndInput').value = savedDateValues.dateEnd;
+        updateNightsInfo();
+      } else {
+        datesRow.style.display = 'none';
+        nightsRow.style.display = 'grid';
+
+        nightsSelect.value = savedNightsValue;
+        dateApproxInput.value = savedApproxValue;
+        updateNightsModeBadge();
+      }
+
+      console.log(`🔄 Modo: ${mode}`);
+    });
+  });
+
+  function updateNightsModeBadge() {
+    const nights = nightsSelect.value || 7;
+    const nightWord = nights == 1 ? 'noite' : 'noites';
+    nightsTextMode.textContent = `${nights} ${nightWord}`;
+  }
+
+  if (nightsSelect) {
+    nightsSelect.addEventListener('change', updateNightsModeBadge);
+  }
+
+  if (dateApproxInput) {
+    dateApproxInput.addEventListener('change', () => {
+      const approx = dateApproxInput.value;
+      const nights = nightsSelect.value;
+      if (approx && nights) {
+        const start = new Date(approx + 'T00:00:00');
+        const end = new Date(start);
+        end.setDate(end.getDate() + parseInt(nights));
+        
+        const monthsShort = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+        console.log(`📅 Aproximado: ${start.getDate()}/${start.getMonth()+1} → ${end.getDate()}/${end.getMonth()+1}`);
+      }
+    });
+  }
 
   document.getElementById('aiBtn').addEventListener('click', runAISearch);
   document.getElementById('aiBtnFull').addEventListener('click', runAISearch);
@@ -1519,6 +1687,33 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('backBtn').addEventListener('click', () => showScreen(null));
   document.getElementById('backFromPackages').addEventListener('click', () => showScreen('resultsScreen'));
   document.getElementById('backFromItinerary').addEventListener('click', () => showScreen(null));
+
+  // ✅ Botão de trocar origem ↔ destino
+  const swapBtn = document.getElementById('swapBtn');
+  const originInput = document.getElementById('originInput');
+  const destinationInput = document.getElementById('destinationInput');
+
+  if (swapBtn && originInput && destinationInput) {
+    swapBtn.addEventListener('click', () => {
+      swapBtn.classList.add('swapping');
+      setTimeout(() => swapBtn.classList.remove('swapping'), 400);
+
+      const originValue = originInput.value;
+      const destValue = destinationInput.value;
+
+      originInput.value = destValue;
+      destinationInput.value = originValue;
+
+      originInput.classList.add('flash');
+      destinationInput.classList.add('flash');
+      setTimeout(() => {
+        originInput.classList.remove('flash');
+        destinationInput.classList.remove('flash');
+      }, 500);
+
+      console.log(`🔄 Trocado: "${originValue}" ↔ "${destValue}"`);
+    });
+  }
 
   // ✅ Atualiza noites quando as datas mudam
   document.getElementById('dateInput')?.addEventListener('change', updateNightsInfo);
@@ -1583,4 +1778,4 @@ window.openHotelModal = openHotelModal;
 window.closeModal = closeModal;
 window.resetSessionMemory = resetSessionMemory;
 
-console.log('✅ ViaGen AI carregado com data entrada/saída!');
+console.log('✅ ViaGen AI carregado!');

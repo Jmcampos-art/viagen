@@ -24,40 +24,51 @@
       <i class="fas fa-sliders-h"></i> Conte seu perfil de viagem
     </div>
 
-    <div class="input-group">
-      <label>
-        <i class="fas fa-plane-departure"></i> Saindo de
-        <span class="help-icon" title="Digite o nome da sua cidade de origem. Ex: São Paulo, Rio de Janeiro, Botucatu...">?</span>
-      </label>
-      <input 
-        type="text" 
-        id="originInput" 
-        placeholder="Ex: São Paulo, Botucatu..." 
-        list="cidadesList"
-        autocomplete="off"
-        title="Digite o nome da cidade de onde você vai sair"
-      >
-      <small class="input-help">
-        <i class="fas fa-info-circle"></i> Digite o nome da sua cidade de origem
-      </small>
-    </div>
+    <!-- LINHA 1: Saindo de + Botão trocar + Destino -->
+    <div class="input-row input-row-origin-dest">
+      <div class="input-group">
+        <label>
+          <i class="fas fa-plane-departure"></i> Saindo de
+          <span class="help-icon" title="Digite o nome da sua cidade de origem">?</span>
+        </label>
+        <input 
+          type="text" 
+          id="originInput" 
+          placeholder="Ex: São Paulo, Botucatu..." 
+          list="cidadesList"
+          autocomplete="off"
+        >
+        <small class="input-help">
+          <i class="fas fa-info-circle"></i> Sua cidade de origem
+        </small>
+      </div>
 
-    <div class="input-group">
-      <label>
-        <i class="fas fa-location-dot"></i> Destino
-        <span class="help-icon" title="Digite o nome da cidade para onde quer ir. Ex: Rio de Janeiro, Santos, Gramado...">?</span>
-      </label>
-      <input 
-        type="text" 
-        id="destinationInput" 
-        placeholder="Ex: Rio de Janeiro, Santos..." 
-        list="cidadesList"
-        autocomplete="off"
-        title="Digite o nome da cidade para onde você quer viajar"
+      <button 
+        type="button"
+        class="swap-btn" 
+        id="swapBtn" 
+        title="Trocar origem e destino"
+        aria-label="Trocar origem e destino"
       >
-      <small class="input-help">
-        <i class="fas fa-info-circle"></i> Digite o nome da cidade de destino
-      </small>
+        <i class="fas fa-right-left"></i>
+      </button>
+
+      <div class="input-group">
+        <label>
+          <i class="fas fa-location-dot"></i> Destino
+          <span class="help-icon" title="Digite o nome da cidade para onde quer ir">?</span>
+        </label>
+        <input 
+          type="text" 
+          id="destinationInput" 
+          placeholder="Ex: Rio de Janeiro, Santos..." 
+          list="cidadesList"
+          autocomplete="off"
+        >
+        <small class="input-help">
+          <i class="fas fa-info-circle"></i> Cidade de destino
+        </small>
+      </div>
     </div>
 
     <datalist id="cidadesList">
@@ -116,56 +127,126 @@
       <option value="Tóquio">
     </datalist>
 
-    <div class="input-group">
-      <label>
-        <i class="fas fa-calendar-alt"></i> Data de entrada
-        <span class="help-icon" title="Data de ida / check-in">?</span>
-      </label>
-      <input type="date" id="dateInput" min="2025-01-01" max="2030-12-31">
-      <small class="input-help">
-        <i class="fas fa-info-circle"></i> Data de ida
-      </small>
+    <!-- LINHA 2: Abas + Datas OU Noites -->
+    <div class="date-mode-tabs">
+      <button type="button" class="date-tab active" data-mode="dates">
+        <i class="fas fa-calendar-alt"></i> Por Data
+      </button>
+      <button type="button" class="date-tab" data-mode="nights">
+        <i class="fas fa-moon"></i> Por Noites
+      </button>
     </div>
 
-    <div class="input-group">
-      <label>
-        <i class="fas fa-calendar-check"></i> Data de saída
-        <span class="help-icon" title="Data de volta / check-out">?</span>
-      </label>
-      <input type="date" id="dateEndInput" min="2025-01-01" max="2030-12-31">
-      <small class="input-help">
-        <i class="fas fa-info-circle"></i> Data de volta
-      </small>
-    </div>
+    <!-- MODO 1: Datas -->
+    <div class="input-row" id="datesRow">
+      <div class="input-group">
+        <label>
+          <i class="fas fa-calendar-alt"></i> Data de entrada
+          <span class="help-icon" title="Data de ida / check-in">?</span>
+        </label>
+        <input type="date" id="dateInput" min="2025-01-01" max="2030-12-31">
+        <small class="input-help">
+          <i class="fas fa-info-circle"></i> Data de ida
+        </small>
+      </div>
 
-    <div class="input-group" id="nightsInfoGroup" style="display:none;">
-      <div class="nights-badge">
-        <i class="fas fa-moon"></i>
-        <span id="nightsInfo">0 noites</span>
+      <div class="input-group">
+        <label>
+          <i class="fas fa-calendar-check"></i> Data de saída
+          <span class="help-icon" title="Data de volta / check-out">?</span>
+        </label>
+        <input type="date" id="dateEndInput" min="2025-01-01" max="2030-12-31">
+        <small class="input-help">
+          <i class="fas fa-info-circle"></i> Data de volta
+        </small>
+      </div>
+
+      <div class="input-group" id="nightsInfoGroup" style="display:none;">
+        <label>&nbsp;</label>
+        <div class="nights-badge">
+          <i class="fas fa-moon"></i>
+          <span id="nightsInfo">0 noites</span>
+        </div>
       </div>
     </div>
 
-    <div class="input-group">
-      <label><i class="fas fa-temperature-high"></i> Clima preferido</label>
-      <select id="climateSelect">
-        <option value="">Todos</option>
-        <option value="calor">Calor / Quente</option>
-        <option value="frio">Frio / Neve</option>
-        <option value="ameno">Ameno</option>
-        <option value="tropical">Tropical</option>
-        <option value="seco">Seco / Desértico</option>
-      </select>
+    <!-- MODO 2: Só Noites -->
+    <div class="input-row" id="nightsRow" style="display:none;">
+      <div class="input-group">
+        <label>
+          <i class="fas fa-moon"></i> Quantas noites?
+          <span class="help-icon" title="Só escolher o número de noites, sem se preocupar com datas">?</span>
+        </label>
+        <select id="nightsSelect">
+          <option value="">Escolha...</option>
+          <option value="1">1 noite</option>
+          <option value="2">2 noites</option>
+          <option value="3">3 noites</option>
+          <option value="4">4 noites</option>
+          <option value="5">5 noites</option>
+          <option value="6">6 noites</option>
+          <option value="7" selected>7 noites (1 semana)</option>
+          <option value="10">10 noites</option>
+          <option value="14">14 noites (2 semanas)</option>
+          <option value="21">21 noites (3 semanas)</option>
+          <option value="30">30 noites (1 mês)</option>
+        </select>
+        <small class="input-help">
+          <i class="fas fa-info-circle"></i> Não precisa saber o dia exato
+        </small>
+      </div>
+
+      <div class="input-group">
+        <label>
+          <i class="fas fa-calendar-plus"></i> Data aproximada (opcional)
+        </label>
+        <input type="date" id="dateApproxInput" min="2025-01-01" max="2030-12-31">
+        <small class="input-help">
+          <i class="fas fa-info-circle"></i> Se souber, informe quando pretende ir
+        </small>
+      </div>
+
+      <div class="input-group">
+        <label>&nbsp;</label>
+        <div class="nights-badge" id="nightsBadgeMode">
+          <i class="fas fa-moon"></i>
+          <span id="nightsTextMode">7 noites</span>
+        </div>
+      </div>
     </div>
 
-    <div class="input-group">
-      <label><i class="fas fa-wallet"></i> Orçamento</label>
-      <select id="budgetSelect">
-        <option value="">Qualquer</option>
-        <option value="baixo">Econômico (até R$ 5.000)</option>
-        <option value="medio">Médio (R$ 5.000 - R$ 15.000)</option>
-        <option value="alto">Premium (R$ 15.000 - R$ 30.000)</option>
-        <option value="luxo">Luxo (acima de R$ 30.000)</option>
-      </select>
+    <!-- LINHA 3: Clima + Orçamento -->
+    <div class="input-row">
+      <div class="input-group">
+        <label><i class="fas fa-temperature-high"></i> Clima preferido</label>
+        <select id="climateSelect">
+          <option value="">Todos</option>
+          <option value="calor">Calor / Quente</option>
+          <option value="frio">Frio / Neve</option>
+          <option value="ameno">Ameno</option>
+          <option value="tropical">Tropical</option>
+          <option value="seco">Seco / Desértico</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label>
+          <i class="fas fa-wallet"></i> Orçamento (R$)
+          <span class="help-icon" title="Digite o valor ou escolha uma faixa rápida">?</span>
+        </label>
+        <input 
+          type="number" 
+          id="budgetInput" 
+          placeholder="Ex: 8000" 
+          min="0" 
+          step="100"
+          autocomplete="off"
+        >
+
+        <small class="input-help">
+          <i class="fas fa-info-circle"></i> Digite o valor ou escolha uma faixa
+        </small>
+      </div>
     </div>
 
     <button class="search-btn" id="searchBtn">
