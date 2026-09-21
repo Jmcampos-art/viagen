@@ -1777,3 +1777,30 @@ body {
 .input-group input[list]::-webkit-calendar-picker-indicator {
   display: none;
 }
+/* ==============================
+   BADGE DE NOITES
+   ============================== */
+.nights-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #7b5cff, #ff7b2c);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.7rem 1.2rem;
+  border-radius: 2rem;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 12px -4px #7b5cff60;
+  animation: pulseNights 2s infinite;
+  width: fit-content;
+}
+
+@keyframes pulseNights {
+  0%, 100% { box-shadow: 0 4px 12px -4px #7b5cff60; }
+  50% { box-shadow: 0 4px 20px -4px #7b5cff90; }
+}
+
+.nights-badge i {
+  font-size: 0.95rem;
+}
