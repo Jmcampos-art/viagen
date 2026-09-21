@@ -12,6 +12,82 @@ app.use(express.json());
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 /* ============================================================
+   CACHE DE IMAGENS (evita requisições repetidas)
+   ============================================================ */
+const imageCache = new Map();
+
+/* ============================================================
+   BUSCAR IMAGEM VIA WIKIMEDIA COMMONS (grátis, sem chave)
+   ============================================================ */
+async function buscarImagemCidade(nomeCidade, pontoTuristico = '') {
+  const cacheKey = `${nomeCidade}_${pontoTuristico}`.toLowerCase();
+  
+  // ✅ Cache em memória
+  if (imageCache.has(cacheKey)) {
+    console.log(`💾 Imagem em cache: ${cacheKey}`);
+    return imageCache.get(cacheKey);
+  }
+
+  // ✅ Fallbacks de imagem (nunca fica em branco)
+  const FALLBACKS = [
+    'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1600&q=80',
+    'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1600&q=80',
+    'https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=1600&q=80'
+  ];
+
+  const getFallback = () => FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)];
+
+  // Ordem de tentativas
+  const queries = [
+    pontoTuristico ? `${nomeCidade} ${pontoTuristico}` : null,
+    `${nomeCidade} city`,
+    `${nomeCidade} skyline`,
+    `${nomeCidade} tourism`,
+    nomeCidade
+  ].filter(Boolean);
+
+  for (const query of queries) {
+    try {
+      const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=5&gsrnamespace=6&prop=imageinfo&iiprop=url&iiurlwidth=1600&format=json&origin=*`;
+      
+      const response = await fetch(url, {
+        headers: { 'User-Agent': 'ViaGenAI/1.0 (travel-planner)' }
+      });
+
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      
+      if (data.query?.pages) {
+        const pages = Object.values(data.query.pages);
+        
+        for (const page of pages) {
+          const imageInfo = page.imageinfo?.[0];
+          if (imageInfo?.thumburl) {
+            const imgUrl = imageInfo.thumburl;
+            // Filtra imagens válidas (não SVG/ícones)
+            if (imgUrl.match(/\.(jpg|jpeg|png|webp)/i) || imgUrl.includes('/thumb/')) {
+              console.log(`✅ Wikimedia: "${query}" → ${imgUrl.substring(0, 80)}...`);
+              imageCache.set(cacheKey, imgUrl);
+              return imgUrl;
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.log(`⚠️ Erro Wikimedia ("${query}"):`, error.message);
+      continue;
+    }
+  }
+
+  // Se não achou nada, usa fallback genérico
+  console.log(`❌ Nenhuma imagem encontrada para "${nomeCidade}". Usando fallback.`);
+  const fallback = getFallback();
+  imageCache.set(cacheKey, fallback);
+  return fallback;
+}
+
+/* ============================================================
    BANCO DE CIDADES BRASILEIRAS
    ============================================================ */
 const CIDADES_BR = {
@@ -265,10 +341,12 @@ app.get('/', (req, res) => {
     status: 'Backend ViaGen AI + Groq funcionando! 🚀',
     modelo: 'openai/gpt-oss-120b',
     cidades: Object.keys(CIDADES_BR).length,
+    imagensCache: imageCache.size,
     rotas: [
       'GET /', 
       'GET /test-ai', 
       'GET /test-estado', 
+      'GET /test-image?cidade=Rio',
       'POST /api/search-destination', 
       'POST /api/recommend-destinations',
       'POST /api/generate-by-climate',
@@ -280,6 +358,15 @@ app.get('/', (req, res) => {
 app.get('/test-estado', (req, res) => {
   const cidade = req.query.cidade || 'botucatu';
   res.json({ cidade, estado: getEstado(cidade) });
+});
+
+/* Rota de teste de imagem */
+app.get('/test-image', async (req, res) => {
+  const cidade = req.query.cidade || 'Rio de Janeiro';
+  const ponto = req.query.ponto || '';
+  
+  const imagem = await buscarImagemCidade(cidade, ponto);
+  res.json({ cidade, ponto, imagem });
 });
 
 app.get('/test-ai', async (req, res) => {
@@ -402,11 +489,12 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
     if (!transporte.disponivel.bus) destination.pricing.bus = null;
     destination.state = destinoUFNome(transporte.ufDestino) || destination.state;
 
-    if (!destination.image || !destination.image.startsWith('http')) {
-      destination.image = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1600&q=80';
-    }
+    // 🖼️ BUSCA IMAGEM REAL VIA WIKIMEDIA
+    const primeiroPonto = destination.attractions?.[0] || '';
+    const imagemReal = await buscarImagemCidade(destination.name, primeiroPonto);
+    destination.image = imagemReal;
 
-    console.log(`✅ ${destination.name}`);
+    console.log(`✅ ${destination.name} | Imagem: ${imagemReal.substring(0, 70)}...`);
     res.json(destination);
   } catch (error) {
     console.error('❌ Erro IA:', error);
@@ -433,19 +521,15 @@ PERFIL DO VIAJANTE:
 - Orçamento: ${budget || 'Sem restrição'}
 
 ${exclude?.length ? `
-🚫⚠️ MUITO IMPORTANTE — NÃO RECOMENDE ESTES DESTINOS (já foram sugeridos):
+🚫⚠️ NÃO RECOMENDE ESTES DESTINOS (já foram sugeridos):
 ${exclude.map(n => `- ${n}`).join('\n')}
-
-Você DEVE escolher destinos TOTALMENTE DIFERENTES dos listados acima!
 ` : ''}
 
-REGRAS OBRIGATÓRIAS:
+REGRAS:
 1. Recomende destinos REAIS que existem
 2. Varie países/estados (NÃO repita o mesmo local)
 3. Considere o mês, clima e orçamento
-4. Se orçamento baixo, foque em destinos nacionais
-5. Se alto, inclua destinos internacionais
-6. Misture destinos famosos e menos conhecidos
+4. Misture destinos famosos e menos conhecidos
 
 FORMATO (JSON puro):
 {
@@ -501,10 +585,20 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
 
     const data = JSON.parse(text);
     const recommendations = data.recommendations || [];
+    console.log(`✅ IA recomendou ${recommendations.length} destinos. Buscando imagens...`);
 
-    console.log(`✅ IA recomendou: ${recommendations.map(r => r.name).join(', ')}`);
+    // 🖼️ BUSCA IMAGENS PARA CADA RECOMENDAÇÃO
+    const recommendationsComImagens = await Promise.all(
+      recommendations.map(async (rec) => {
+        const primeiroPonto = rec.attractions?.[0] || '';
+        const imagemReal = await buscarImagemCidade(rec.name, primeiroPonto);
+        rec.image = imagemReal;
+        return rec;
+      })
+    );
 
-    res.json({ recommendations });
+    console.log(`✅ Todas as imagens prontas!`);
+    res.json({ recommendations: recommendationsComImagens });
   } catch (error) {
     console.error('❌ Erro IA recomendação:', error);
     res.status(500).json({ error: 'Erro ao recomendar destinos', details: error.message });
@@ -512,7 +606,7 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
 });
 
 /* ============================================================
-   ROTA: /api/generate-by-climate (IA gera várias por clima)
+   ROTA: /api/generate-by-climate
    ============================================================ */
 app.post('/api/generate-by-climate', async (req, res) => {
   try {
@@ -546,10 +640,13 @@ REGRAS:
 3. Varie os países/estados (não repita)
 4. Inclua destinos conhecidos e alguns menos explorados
 5. NUNCA invente cidades — use destinos REAIS
-6. Para clima "calor", inclua: Cancún, Miami, Natal, Maceió, Jericoacoara, Rio, Salvador, Fortaleza, Recife, Porto de Galinhas, etc.
-7. Para clima "frio", inclua: Gramado, Canela, Campos do Jordão, Ushuaia, Bariloche, Reykjavik, etc.
-8. Para clima "tropical", inclua: Bali, Fernando de Noronha, Bonito, Chapada dos Guimarães, etc.
-9. Para clima "seco", inclua: Cairo, Dubai, Marrakech, Atacama, Chapada Diamantina, etc.
+
+Para o clima "${climate}", exemplos:
+- calor: Cancún, Miami, Natal, Maceió, Jericoacoara, Rio, Salvador, Fortaleza, Recife, Porto de Galinhas
+- frio: Gramado, Canela, Campos do Jordão, Ushuaia, Bariloche, Reykjavik, Monte Verde
+- tropical: Bali, Fernando de Noronha, Bonito, Chapada dos Guimarães, Alter do Chão
+- ameno: Lisboa, Paris, Roma, Santiago, Buenos Aires
+- seco: Cairo, Dubai, Marrakech, Atacama, Chapada Diamantina
 
 FORMATO (JSON puro):
 {
@@ -579,10 +676,6 @@ FORMATO (JSON puro):
   ]
 }
 
-⚠️ SOBRE PREÇOS:
-- Use valores realistas em R$
-- Ajuste pela distância de ${origin || 'São Paulo'}
-
 O campo "climate" DEVE ser exatamente: "${climate}"
 `;
 
@@ -602,10 +695,20 @@ O campo "climate" DEVE ser exatamente: "${climate}"
 
     const data = JSON.parse(text);
     const generated = data.destinations || [];
+    console.log(`✅ IA gerou ${generated.length} destinos de "${climate}". Buscando imagens...`);
 
-    console.log(`✅ IA gerou ${generated.length} destinos de "${climate}": ${generated.map(d => d.name).join(', ')}`);
+    // 🖼️ BUSCA IMAGENS PARA CADA DESTINO
+    const generatedComImagens = await Promise.all(
+      generated.map(async (dest) => {
+        const primeiroPonto = dest.attractions?.[0] || '';
+        const imagemReal = await buscarImagemCidade(dest.name, primeiroPonto);
+        dest.image = imagemReal;
+        return dest;
+      })
+    );
 
-    res.json({ destinations: generated });
+    console.log(`✅ Todas as imagens prontas!`);
+    res.json({ destinations: generatedComImagens });
   } catch (error) {
     console.error('❌ Erro IA gerar por clima:', error);
     res.status(500).json({ error: 'Erro ao gerar destinos', details: error.message });
@@ -675,5 +778,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
   console.log(`🗺️  Cidades: ${Object.keys(CIDADES_BR).length}`);
+  console.log(`🖼️  Cache de imagens ativo`);
   console.log(`📋 Rotas: /api/search-destination, /api/recommend-destinations, /api/generate-by-climate, /api/itinerary`);
 });
