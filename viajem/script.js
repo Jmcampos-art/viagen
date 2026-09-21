@@ -73,11 +73,6 @@
        { day: 2, title: "San Cristóbal", desc: "Teleférico." },
        { day: 3, title: "Valparaíso", desc: "Cores e mar." },
        { day: 4, title: "Vinícolas", desc: "Degustação." }
-     ]},
-     { id: 12, name: "Gramado", country: "Brasil", state: "Rio Grande do Sul", region: "Sul", climate: "frio", climateLabel: "Frio / Serrano", bestMonths: [6,7,8], pricing: { flight: 1400, bus: 500, hotelPerNight: 480, tours: 350 }, transport: { recommended: "both", flightAvailable: true, busAvailable: true, distanceKm: 900 }, attractions: ["Lago Negro", "Rua Coberta", "Snowland"], image: "https://images.unsplash.com/photo-1596489772924-6d6d6f9c2e1b?q=80&w=1470&auto=format&fit=crop", description: "Clima europeu.", rating: 9.1, idealDays: 3, tips: "Leve casaco.", activities: [
-       { day: 1, title: "Lago Negro", desc: "Pedalinho." },
-       { day: 2, title: "Snowland", desc: "Neve." },
-       { day: 3, title: "Mini Mundo", desc: "Miniaturas." }
      ]}
    ];
    
@@ -206,152 +201,209 @@
      }
    }
    
-/* ---------- BUSCA MANUAL ---------- */
-async function filterDestinations() {
-  const dateValue = document.getElementById('dateInput').value;
-  const month = dateValue ? new Date(dateValue + 'T00:00:00').getMonth() + 1 : null;
-  const climate = document.getElementById('climateSelect').value;
-  const destinationText = document.getElementById('destinationInput').value.trim();
-  const originText = document.getElementById('originInput').value.trim();
-
-  const cardsContainer = document.getElementById('cardsContainer');
-  const resultCountSpan = document.getElementById('resultCount');
-  const title = document.getElementById('resultsScreenTitle');
-
-  title.innerHTML = '<i class="fas fa-search"></i> Buscando...';
-  resultCountSpan.textContent = 'Buscando...';
-  cardsContainer.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><i class="fas fa-circle-notch fa-spin"></i><br>Buscando destinos...</div>`;
-  showScreen('resultsScreen');
-
-  // 1️⃣ Filtra na base local
-  let filtered = destinations.filter(dest => {
-    if (month && !dest.bestMonths.includes(Number(month))) return false;
-    if (climate && dest.climate !== climate) return false;
-    if (destinationText) {
-      const s = destinationText.toLowerCase();
-      if (!dest.name.toLowerCase().includes(s) && !dest.country.toLowerCase().includes(s)) return false;
-    }
-    return true;
-  });
-
-  // 2️⃣ Se digitou destino específico e não achou, busca pela IA
-  if (destinationText && filtered.length === 0) {
-    try {
-      title.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Buscando com IA...';
-      resultCountSpan.textContent = 'IA trabalhando (10-15s)...';
-      const aiDestination = await searchWithAI(destinationText);
-      filtered = [aiDestination];
-    } catch (error) {
-      console.error('Erro busca IA:', error);
-      cardsContainer.innerHTML = `
-        <div class="empty-state" style="grid-column:1/-1;">
-          <i class="fas fa-exclamation-triangle"></i><br>
-          Não encontramos "${destinationText}".<br>
-        </div>`;
-      resultCountSpan.textContent = '0 destinos';
-      title.innerHTML = '<i class="fas fa-suitcase-rolling"></i> Resultados da busca';
-      return;
-    }
-  }
-
-  // 3️⃣ ✅ SE ESCOLHEU CLIMA E TEM POUCAS CIDADES, IA GERA MAIS
-  if (!destinationText && climate && filtered.length < 5) {
-    try {
-      title.innerHTML = `<i class="fas fa-wand-magic-sparkles"></i> IA gerando mais destinos de "${climate}"...`;
-      resultCountSpan.textContent = 'IA trabalhando (10-15s)...';
-
-      console.log(`🌡️ Poucas cidades com clima "${climate}" (${filtered.length}). Pedindo para IA...`);
-
-      // Nomes já existentes (para não duplicar)
-      const nomesExistentes = destinations.map(d => d.name.toLowerCase());
-
-      const response = await fetch(`${API_URL}/api/generate-by-climate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          climate,
-          origin: originText,
-          count: 8
-        })
-      });
-
-      if (!response.ok) throw new Error('Falha ao gerar destinos por clima');
-
-      const data = await response.json();
-      const novos = data.destinations || [];
-
-      console.log(`✅ IA gerou ${novos.length} novos destinos`);
-
-      // Adiciona só os que ainda não existem
-      const adicionados = [];
-      novos.forEach(r => {
-        const nomeLower = r.name.toLowerCase();
-        if (nomesExistentes.includes(nomeLower)) return;
-
-        nextAIId++;
-        const nova = {
-          id: nextAIId,
-          name: r.name,
-          country: r.country || 'Brasil',
-          state: r.state || '',
-          region: r.region || 'Mundo',
-          climate: climate,
-          climateLabel: r.climateLabel || climate,
-          bestMonths: r.bestMonths || [1,2,3,4,5,6,7,8,9,10,11,12],
-          pricing: {
-            flight: r.pricing?.flight ?? null,
-            bus: r.pricing?.bus ?? null,
-            hotelPerNight: r.pricing?.hotelPerNight || 300,
-            tours: r.pricing?.tours || 300
-          },
-          transport: r.transport || {
-            recommended: r.pricing?.flight ? 'both' : 'bus',
-            flightAvailable: !!r.pricing?.flight,
-            busAvailable: !!r.pricing?.bus
-          },
-          attractions: r.attractions || [],
-          image: r.image || 'https://images.unsplash.com/photo-1488646953014-85cf1c14a9f?w=1600&q=80',
-          description: r.description || '',
-          rating: r.rating || 8.5,
-          idealDays: r.idealDays || 3,
-          tips: r.tips || '',
-          activities: r.activities || [],
-          fromAI: true,
-          origin: originText
-        };
-
-        destinations.push(nova);
-        filtered.push(nova);
-        adicionados.push(nova.name);
-      });
-
-      console.log(`✅ ${adicionados.length} destinos adicionados: ${adicionados.join(', ')}`);
-
-      // Aviso de que veio da IA
-      if (adicionados.length > 0) {
-        setTimeout(() => {
-          const aviso = document.createElement('div');
-          aviso.className = 'ai-notice';
-          aviso.innerHTML = `<i class="fas fa-wand-magic-sparkles"></i> IA adicionou <strong>${adicionados.length}</strong> novos destinos de clima "${climate}"`;
-          cardsContainer.parentNode.insertBefore(aviso, cardsContainer);
-        }, 100);
-      }
-
-    } catch (error) {
-      console.warn('⚠️ IA falhou em gerar por clima:', error.message);
-      // Continua com o que já tem
-    }
-  }
-
-  // 4️⃣ Ordena e renderiza
-  filtered.sort((a, b) => {
-    const totalA = Math.min(a.pricing.flight || Infinity, a.pricing.bus || Infinity);
-    const totalB = Math.min(b.pricing.flight || Infinity, b.pricing.bus || Infinity);
-    return totalA - totalB;
-  });
-
-  renderCards(filtered, false, originText);
-}
+   /* ---------- BUSCA COM IA (destino específico) ---------- */
+   async function searchWithAI(query) {
+     const normalized = query.trim().toLowerCase();
+     if (aiCache.has(normalized)) return aiCache.get(normalized);
+   
+     const origin = document.getElementById('originInput')?.value.trim() || '';
+   
+     const response = await fetch(`${API_URL}/api/search-destination`, {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({
+         query, origin,
+         date: document.getElementById('dateInput')?.value || '',
+         climate: document.getElementById('climateSelect')?.value || '',
+         budget: document.getElementById('budgetSelect')?.value || ''
+       })
+     });
+   
+     if (!response.ok) throw new Error('Falha ao buscar destino');
+   
+     const data = await response.json();
+     if (!data.name || !data.country) throw new Error('Resposta inválida da IA');
+   
+     nextAIId++;
+     const destination = {
+       id: nextAIId,
+       name: data.name,
+       country: data.country,
+       state: data.state || '',
+       region: data.region || 'Mundo',
+       climate: ['calor', 'frio', 'ameno', 'tropical', 'seco'].includes(data.climate) ? data.climate : 'ameno',
+       climateLabel: data.climateLabel || 'Ameno',
+       bestMonths: data.bestMonths || [1,2,3,4,5,6,7,8,9,10,11,12],
+       pricing: {
+         flight: data.pricing?.flight ?? null,
+         bus: data.pricing?.bus ?? null,
+         hotelPerNight: data.pricing?.hotelPerNight || 200,
+         tours: data.pricing?.tours || 200
+       },
+       transport: data.transport || { recommended: 'both', flightAvailable: true, busAvailable: true, distanceKm: null },
+       attractions: data.attractions || [],
+       image: data.image || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1600&q=80',
+       description: data.description || '',
+       rating: data.rating || 8.5,
+       idealDays: data.idealDays || 3,
+       tips: data.tips || '',
+       activities: data.activities || [],
+       fromAI: true,
+       origin
+     };
+   
+     console.log('✅ Destino IA criado:', destination.id, '-', destination.name);
+   
+     aiCache.set(normalized, destination);
+     if (!destinations.find(d => d.name.toLowerCase() === destination.name.toLowerCase())) {
+       destinations.push(destination);
+     }
+   
+     return destination;
+   }
+   
+   /* ---------- BUSCA MANUAL ---------- */
+   async function filterDestinations() {
+     const dateValue = document.getElementById('dateInput').value;
+     const month = dateValue ? new Date(dateValue + 'T00:00:00').getMonth() + 1 : null;
+     const climate = document.getElementById('climateSelect').value;
+     const destinationText = document.getElementById('destinationInput').value.trim();
+     const originText = document.getElementById('originInput').value.trim();
+   
+     const cardsContainer = document.getElementById('cardsContainer');
+     const resultCountSpan = document.getElementById('resultCount');
+     const title = document.getElementById('resultsScreenTitle');
+   
+     title.innerHTML = '<i class="fas fa-search"></i> Buscando...';
+     resultCountSpan.textContent = 'Buscando...';
+     cardsContainer.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><i class="fas fa-circle-notch fa-spin"></i><br>Buscando destinos...</div>`;
+     showScreen('resultsScreen');
+   
+     // 1️⃣ Filtra na base local
+     let filtered = destinations.filter(dest => {
+       if (month && !dest.bestMonths.includes(Number(month))) return false;
+       if (climate && dest.climate !== climate) return false;
+       if (destinationText) {
+         const s = destinationText.toLowerCase();
+         if (!dest.name.toLowerCase().includes(s) && !dest.country.toLowerCase().includes(s)) return false;
+       }
+       return true;
+     });
+   
+     // 2️⃣ Se digitou destino específico e não achou, busca pela IA
+     if (destinationText && filtered.length === 0) {
+       try {
+         title.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Buscando com IA...';
+         resultCountSpan.textContent = 'IA trabalhando (10-15s)...';
+         const aiDestination = await searchWithAI(destinationText);
+         filtered = [aiDestination];
+       } catch (error) {
+         console.error('Erro busca IA:', error);
+         cardsContainer.innerHTML = `
+           <div class="empty-state" style="grid-column:1/-1;">
+             <i class="fas fa-exclamation-triangle"></i><br>
+             Não encontramos "${destinationText}".<br>
+           </div>`;
+         resultCountSpan.textContent = '0 destinos';
+         title.innerHTML = '<i class="fas fa-suitcase-rolling"></i> Resultados da busca';
+         return;
+       }
+     }
+   
+     // 3️⃣ SE ESCOLHEU CLIMA E TEM POUCAS CIDADES, IA GERA MAIS
+     if (!destinationText && climate && filtered.length < 5) {
+       try {
+         title.innerHTML = `<i class="fas fa-wand-magic-sparkles"></i> IA gerando mais destinos de "${climate}"...`;
+         resultCountSpan.textContent = 'IA trabalhando (10-15s)...';
+   
+         console.log(`🌡️ Poucas cidades com clima "${climate}" (${filtered.length}). Pedindo para IA...`);
+   
+         const nomesExistentes = destinations.map(d => d.name.toLowerCase());
+   
+         const response = await fetch(`${API_URL}/api/generate-by-climate`, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({
+             climate,
+             origin: originText,
+             count: 8
+           })
+         });
+   
+         if (!response.ok) throw new Error('Falha ao gerar destinos por clima');
+   
+         const data = await response.json();
+         const novos = data.destinations || [];
+   
+         console.log(`✅ IA gerou ${novos.length} novos destinos`);
+   
+         const adicionados = [];
+         novos.forEach(r => {
+           const nomeLower = r.name.toLowerCase();
+           if (nomesExistentes.includes(nomeLower)) return;
+   
+           nextAIId++;
+           const nova = {
+             id: nextAIId,
+             name: r.name,
+             country: r.country || 'Brasil',
+             state: r.state || '',
+             region: r.region || 'Mundo',
+             climate: climate,
+             climateLabel: r.climateLabel || climate,
+             bestMonths: r.bestMonths || [1,2,3,4,5,6,7,8,9,10,11,12],
+             pricing: {
+               flight: r.pricing?.flight ?? null,
+               bus: r.pricing?.bus ?? null,
+               hotelPerNight: r.pricing?.hotelPerNight || 300,
+               tours: r.pricing?.tours || 300
+             },
+             transport: r.transport || {
+               recommended: r.pricing?.flight ? 'both' : 'bus',
+               flightAvailable: !!r.pricing?.flight,
+               busAvailable: !!r.pricing?.bus
+             },
+             attractions: r.attractions || [],
+             image: r.image || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1600&q=80',
+             description: r.description || '',
+             rating: r.rating || 8.5,
+             idealDays: r.idealDays || 3,
+             tips: r.tips || '',
+             activities: r.activities || [],
+             fromAI: true,
+             origin: originText
+           };
+   
+           destinations.push(nova);
+           filtered.push(nova);
+           adicionados.push(nova.name);
+         });
+   
+         console.log(`✅ ${adicionados.length} destinos adicionados: ${adicionados.join(', ')}`);
+   
+         if (adicionados.length > 0) {
+           setTimeout(() => {
+             const aviso = document.createElement('div');
+             aviso.className = 'ai-notice';
+             aviso.innerHTML = `<i class="fas fa-wand-magic-sparkles"></i> IA adicionou <strong>${adicionados.length}</strong> novos destinos de clima "${climate}"`;
+             cardsContainer.parentNode.insertBefore(aviso, cardsContainer);
+           }, 100);
+         }
+   
+       } catch (error) {
+         console.warn('⚠️ IA falhou em gerar por clima:', error.message);
+       }
+     }
+   
+     // 4️⃣ Ordena e renderiza
+     filtered.sort((a, b) => {
+       const totalA = Math.min(a.pricing.flight || Infinity, a.pricing.bus || Infinity);
+       const totalB = Math.min(b.pricing.flight || Infinity, b.pricing.bus || Infinity);
+       return totalA - totalB;
+     });
+   
+     renderCards(filtered, false, originText);
+   }
    
    /* ---------- RENDERIZAÇÃO DOS CARDS ---------- */
    function renderCards(list, isAIPick = false, originText = '') {
@@ -849,10 +901,10 @@ async function filterDestinations() {
      const nights = offer.nights;
    
      const hotelPhotos = [
-       `https://source.unsplash.com/featured/?hotel,room,luxury,${encodeURIComponent(dest.name)}`,
-       `https://source.unsplash.com/featured/?hotel,lobby,interior`,
-       `https://source.unsplash.com/featured/?hotel,pool,resort`,
-       `https://source.unsplash.com/featured/?hotel,bedroom,modern`
+       'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1600&q=80',
+       'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=1600&q=80',
+       'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1600&q=80',
+       'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=1600&q=80'
      ];
    
      document.getElementById('modalContent').innerHTML = `
@@ -931,17 +983,17 @@ async function filterDestinations() {
      const originText = document.getElementById('originInput').value.trim();
      const budget = document.getElementById('budgetSelect').value;
    
-     // Se tem destino específico, usa busca direta
      if (destinationText) {
        console.log(`🎯 Destino específico: ${destinationText}`);
        return await generateLocalItinerary(dateValue, month, climate, destinationText, budget);
      }
    
-     // Senão, pede para a IA recomendar
      try {
-       console.log('🤖 Pedindo recomendações para a IA...');
+       console.log(`🤖 Pedindo recomendações para a IA... (já usados: ${sessionUsedDestinations.size})`);
        
        const excludeList = Array.from(sessionUsedDestinations);
+       console.log(`📋 Excluindo: ${excludeList.join(', ') || '(nenhum)'}`);
+       
        const response = await fetch(`${API_URL}/api/recommend-destinations`, {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
@@ -962,9 +1014,18 @@ async function filterDestinations() {
    
        if (!recommendations.length) throw new Error('Nenhuma recomendação recebida');
    
-       console.log(`✅ IA recomendou ${recommendations.length} destinos`);
+       // Filtra recomendações já usadas
+       const recommendationsFiltradas = recommendations.filter(r => {
+         const jaUsado = sessionUsedDestinations.has(r.name);
+         if (jaUsado) console.log(`⚠️ IA sugeriu "${r.name}" que já foi usado. Filtrando...`);
+         return !jaUsado;
+       });
    
-       const chosen = recommendations.map((r) => {
+       const finalRecs = recommendationsFiltradas.length > 0 ? recommendationsFiltradas : recommendations;
+   
+       console.log(`✅ IA recomendou ${finalRecs.length} destinos novos`);
+   
+       const chosen = finalRecs.map((r) => {
          nextAIId++;
          return {
            id: nextAIId,
@@ -987,7 +1048,7 @@ async function filterDestinations() {
              busAvailable: !!r.pricing?.bus
            },
            attractions: r.attractions || [],
-           image: r.image || `https://source.unsplash.com/featured/?${encodeURIComponent(r.name)},city,travel`,
+           image: r.image || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1600&q=80',
            description: r.description || '',
            rating: r.rating || 8.5,
            idealDays: r.idealDays || 3,
@@ -1000,11 +1061,11 @@ async function filterDestinations() {
        });
    
        chosen.forEach(d => sessionUsedDestinations.add(d.name));
+       console.log(`📝 Sessão agora tem ${sessionUsedDestinations.size} destinos usados`);
    
        chosen.forEach(d => {
          if (!destinations.find(x => x.name.toLowerCase() === d.name.toLowerCase())) {
            destinations.push(d);
-           console.log(`✅ Adicionado: ${d.name} (ID ${d.id})`);
          }
        });
    
@@ -1044,9 +1105,11 @@ async function filterDestinations() {
      if (!pool.length) pool = [...destinations];
    
      const poolFiltrado = pool.filter(d => !sessionUsedDestinations.has(d.name));
-     if (poolFiltrado.length >= 4) {
+     if (poolFiltrado.length >= 3) {
        pool = poolFiltrado;
+       console.log(`📚 Fallback: ${pool.length} destinos disponíveis`);
      } else {
+       console.log(`♻️ Poucos destinos não usados. Resetando memória.`);
        sessionUsedDestinations.clear();
      }
    
@@ -1060,7 +1123,7 @@ async function filterDestinations() {
    
      scored.sort((a, b) => b._score - a._score);
    
-     const numDestinos = Math.min(6, Math.max(3, 3 + Math.floor(Math.random() * 4)));
+     const numDestinos = Math.min(4, Math.max(3, pool.length));
      const chosen = [];
      const usedClimates = new Set();
    
@@ -1076,7 +1139,6 @@ async function filterDestinations() {
        if (!chosen.find(d => d.id === dest.id)) chosen.push(dest);
      }
    
-     chosen.sort(() => Math.random() - 0.5);
      chosen.forEach(d => sessionUsedDestinations.add(d.name));
    
      let totalDays = 0, totalFlight = 0, totalBus = 0, totalHotel = 0, totalTours = 0;
@@ -1229,8 +1291,8 @@ async function filterDestinations() {
      const loadingMessages = [
        'IA analisando seu perfil...',
        'Consultando destinos pelo mundo...',
-       'Escolhendo as melhores opções para você...',
-       'Calculando preços e roteiro...',
+       'Buscando destinos diferentes...',
+       'Escolhendo as melhores opções...',
        'Montando sua viagem dos sonhos...'
      ];
      const msg = loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
