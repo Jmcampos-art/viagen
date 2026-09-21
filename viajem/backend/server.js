@@ -265,7 +265,14 @@ app.get('/', (req, res) => {
     status: 'Backend ViaGen AI + Groq funcionando! 🚀',
     modelo: 'openai/gpt-oss-120b',
     cidades: Object.keys(CIDADES_BR).length,
-    rotas: ['GET /', 'GET /test-ai', 'GET /test-estado', 'POST /api/search-destination', 'POST /api/itinerary']
+    rotas: [
+      'GET /', 
+      'GET /test-ai', 
+      'GET /test-estado', 
+      'POST /api/search-destination', 
+      'POST /api/recommend-destinations',
+      'POST /api/itinerary'
+    ]
   });
 });
 
@@ -292,7 +299,7 @@ app.get('/test-ai', async (req, res) => {
 });
 
 /* ============================================================
-   ROTA: /api/search-destination
+   ROTA: /api/search-destination (busca específica)
    ============================================================ */
 app.post('/api/search-destination', async (req, res) => {
   try {
@@ -308,24 +315,16 @@ app.post('/api/search-destination', async (req, res) => {
     let instrucaoTransporte = '';
     if (transporte.recomendado === 'bus') {
       instrucaoTransporte = `
-⚠️ REGRA DE TRANSPORTE (JÁ DECIDIDA PELO SISTEMA):
+⚠️ REGRA DE TRANSPORTE:
 - Origem e destino estão no MESMO ESTADO (${transporte.ufOrigem})
-- PORTANTO: APENAS ÔNIBUS
-- Defina "pricing.flight": null
-- Defina "pricing.bus": valor realista (R$ 50-250)
-- "transport.recommended": "bus"
-- "transport.flightAvailable": false
-- "transport.busAvailable": true
-- NUNCA inclua voo!
+- APENAS ÔNIBUS. Defina "pricing.flight": null, "pricing.bus": valor
+- "transport.recommended": "bus", "transport.flightAvailable": false
 `;
     } else if (transporte.ufOrigem && transporte.ufDestino) {
       instrucaoTransporte = `
-⚠️ REGRA DE TRANSPORTE (JÁ DECIDIDA PELO SISTEMA):
-- Origem em ${transporte.ufOrigem} e destino em ${transporte.ufDestino} → estados diferentes
+⚠️ REGRA DE TRANSPORTE:
+- Estados diferentes (${transporte.ufOrigem} → ${transporte.ufDestino})
 - Mostre AMBOS (avião E ônibus)
-- "pricing.flight": valor realista
-- "pricing.bus": valor realista
-- "transport.recommended": "both"
 `;
     } else {
       instrucaoTransporte = `⚠️ Estados não identificados - use ambos os transportes.`;
@@ -345,22 +344,11 @@ ${instrucaoTransporte}
 
 ⚠️ REGRAS SOBRE ATRAÇÕES (NÃO INVENTE):
 1. NUNCA invente atrações, parques, museus ou pontos turísticos
-2. Se não souber atrações REAIS de "${query}", use termos GENÉRICOS mas verdadeiros:
-   "Centro Histórico", "Praça Central", "Igreja Matriz", "Mercado Municipal", "Museu Municipal", "Parque Municipal", "Catedral"
-3. NUNCA invente "Parque Zoológico" se não tiver certeza
-4. Para cidades pequenas/médias, use ATRAÇÕES GENÉRICAS que geralmente existem
-5. Para cidades conhecidas, use as atrações FAMOSAS reais
+2. Se não souber atrações REAIS de "${query}", use termos GENÉRICOS: "Centro Histórico", "Praça Central", "Igreja Matriz", "Mercado Municipal"
+3. Para cidades pequenas/médias, use ATRAÇÕES GENÉRICAS
 
-⚠️ SOBRE A IMAGEM (MUITO IMPORTANTE):
-- Use uma URL de imagem REAL do Unsplash da cidade "${query}"
-- Formato: "https://images.unsplash.com/photo-XXXXX?q=80&w=1470&auto=format&fit=crop"
-- Se não souber um ID real, use: "https://source.unsplash.com/featured/?${encodeURIComponent(query)},city,travel"
-- NUNCA invente URLs quebradas
-
-⚠️ SOBRE PREÇOS:
-- Use valores realistas em R$
-- Hotel: R$ 120-300/noite (cidades médias) | R$ 300-800 (capitais)
-- Passeios: R$ 150-400
+⚠️ SOBRE A IMAGEM:
+- Use "https://source.unsplash.com/featured/?${encodeURIComponent(query)},city,travel,brazil"
 
 FORMATO (JSON puro):
 {
@@ -373,18 +361,18 @@ FORMATO (JSON puro):
   "climateLabel": "Ameno / Subtropical",
   "bestMonths": [1,2,3,4,5,6,7,8,9,10,11,12],
   "pricing": { "flight": null, "bus": 90, "hotelPerNight": 180, "tours": 200 },
-  "transport": { "recommended": "bus", "flightAvailable": false, "busAvailable": true, "distanceKm": 80 },
+  "transport": { "recommended": "bus", "flightAvailable": false, "busAvailable": true },
   "currency": "R$",
-  "attractions": ["Praça Central", "Igreja Matriz", "Museu Municipal", "Parque Municipal"],
+  "attractions": ["Praça Central", "Igreja Matriz", "Museu Municipal"],
   "image": "https://source.unsplash.com/featured/?NOMEDACIDADE,brazil,travel",
   "description": "Descrição curta e realista",
   "rating": 8.5,
   "idealDays": 3,
   "tips": "Dica genérica mas útil",
   "activities": [
-    { "day": 1, "title": "Chegada e Centro", "desc": "Conheça o centro histórico e a praça principal." },
-    { "day": 2, "title": "Cultura Local", "desc": "Visite museus e pontos culturais da cidade." },
-    { "day": 3, "title": "Gastronomia", "desc": "Experimente a culinária típica da região." }
+    { "day": 1, "title": "Chegada e Centro", "desc": "Conheça o centro histórico." },
+    { "day": 2, "title": "Cultura Local", "desc": "Visite museus locais." },
+    { "day": 3, "title": "Gastronomia", "desc": "Experimente a culinária típica." }
   ]
 }
 
@@ -394,7 +382,7 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
     const completion = await groq.chat.completions.create({
       model: "openai/gpt-oss-120b",
       messages: [
-        { role: "system", content: "Você é um especialista em viagens. SIGA AS INSTRUÇÕES DE TRANSPORTE. NUNCA invente atrações. Use URLs REAIS de imagens. Responda em JSON válido." },
+        { role: "system", content: "Você é um especialista em viagens. SIGA AS INSTRUÇÕES. Responda em JSON válido." },
         { role: "user", content: prompt }
       ],
       response_format: { type: "json_object" },
@@ -407,7 +395,6 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
 
     const destination = JSON.parse(text);
 
-    // ⚡ FORÇA o transporte correto
     destination.transport = {
       recommended: transporte.recomendado,
       flightAvailable: transporte.disponivel.flight,
@@ -418,16 +405,110 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
     if (!transporte.disponivel.bus) destination.pricing.bus = null;
     destination.state = destinoUFNome(transporte.ufDestino) || destination.state;
 
-    // ⚡ FORÇA imagem real se a IA não gerou uma válida
-    if (!destination.image || !destination.image.startsWith('http') || destination.image.includes('source.unsplash.com/featured')) {
-      destination.image = `https://source.unsplash.com/featured/?${encodeURIComponent(destination.name)},city,travel,brazil`;
+    if (!destination.image || !destination.image.startsWith('http')) {
+      destination.image = `https://source.unsplash.com/featured/?${encodeURIComponent(destination.name)},city,travel`;
     }
 
-    console.log(`✅ ${destination.name} | Imagem: ${destination.image.substring(0, 70)}...`);
+    console.log(`✅ ${destination.name}`);
     res.json(destination);
   } catch (error) {
     console.error('❌ Erro IA:', error);
     res.status(500).json({ error: 'Erro ao buscar destino', details: error.message });
+  }
+});
+
+/* ============================================================
+   ROTA: /api/recommend-destinations (IA recomenda vários)
+   ============================================================ */
+app.post('/api/recommend-destinations', async (req, res) => {
+  try {
+    const { origin, month, climate, budget, count, exclude } = req.body;
+
+    console.log(`🤖 IA recomendando ${count || 4} destinos | Origem: ${origin || '?'} | Excluir: ${exclude?.length || 0}`);
+
+    const prompt = `
+Você é um especialista em viagens. Recomende ${count || 4} destinos de viagem DIFERENTES em português do Brasil.
+
+PERFIL DO VIAJANTE:
+- Saindo de: ${origin || 'Não informado (assuma São Paulo)'}
+- Mês: ${month || 'Flexível'}
+- Clima preferido: ${climate || 'Variado'}
+- Orçamento: ${budget || 'Sem restrição'}
+${exclude?.length ? `- NÃO recomende estas cidades (já sugeridas): ${exclude.join(', ')}` : ''}
+
+REGRAS:
+1. Recomende destinos REAIS que existem
+2. Varie os destinos (não repita país/estado)
+3. Considere mês, clima e orçamento
+4. Se orçamento baixo, foque em destinos nacionais
+5. Se alto, inclua destinos internacionais
+6. Misture destinos famosos e menos conhecidos
+
+FORMATO (JSON puro):
+{
+  "recommendations": [
+    {
+      "name": "Nome da Cidade",
+      "country": "País",
+      "state": "Estado (se aplicável)",
+      "region": "Região",
+      "climate": "ameno",
+      "climateLabel": "Ameno / Subtropical",
+      "bestMonths": [1,2,3,4,5,6,7,8,9,10,11,12],
+      "pricing": { "flight": 1200, "bus": 250, "hotelPerNight": 350, "tours": 400 },
+      "transport": { "recommended": "both", "flightAvailable": true, "busAvailable": true },
+      "attractions": ["Atração 1", "Atração 2", "Atração 3", "Atração 4"],
+      "description": "Descrição curta em 1 frase",
+      "rating": 9.0,
+      "idealDays": 4,
+      "tips": "Dica prática",
+      "whyRecommend": "Por que estou recomendando (1 frase)",
+      "activities": [
+        { "day": 1, "title": "Chegada", "desc": "Descrição" },
+        { "day": 2, "title": "Atração", "desc": "Descrição" },
+        { "day": 3, "title": "Passeio", "desc": "Descrição" },
+        { "day": 4, "title": "Despedida", "desc": "Descrição" }
+      ]
+    }
+  ]
+}
+
+⚠️ SOBRE IMAGEM:
+- Use: "https://source.unsplash.com/featured/?CIDADE,city,travel"
+- NUNCA invente URLs
+
+⚠️ SOBRE PREÇOS:
+- Valores realistas em R$
+- Voo: considere distância de ${origin || 'São Paulo'}
+- Se mesmo estado: "flight": null
+- Se longe (>1500km): "bus": null
+
+O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
+`;
+
+    const completion = await groq.chat.completions.create({
+      model: "openai/gpt-oss-120b",
+      messages: [
+        { role: "system", content: "Você é um especialista em viagens que SEMPRE recomenda destinos REAIS. Nunca invente cidades. Responda APENAS em JSON válido." },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.9,
+      max_tokens: 6000
+    });
+
+    let text = completion.choices[0]?.message?.content || '';
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const data = JSON.parse(text);
+    const recommendations = data.recommendations || [];
+
+    console.log(`✅ IA recomendou: ${recommendations.map(r => r.name).join(', ')}`);
+
+    res.json({ recommendations });
+  } catch (error) {
+    console.error('❌ Erro IA recomendação:', error);
+    res.status(500).json({ error: 'Erro ao recomendar destinos', details: error.message });
   }
 });
 
@@ -494,4 +575,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
   console.log(`🗺️  Cidades: ${Object.keys(CIDADES_BR).length}`);
+  console.log(`📋 Rotas: /api/search-destination, /api/recommend-destinations, /api/itinerary`);
 });
