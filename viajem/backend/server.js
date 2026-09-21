@@ -300,7 +300,7 @@ app.get('/test-ai', async (req, res) => {
 });
 
 /* ============================================================
-   ROTA: /api/search-destination (busca específica)
+   ROTA: /api/search-destination
    ============================================================ */
 app.post('/api/search-destination', async (req, res) => {
   try {
@@ -415,7 +415,7 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
 });
 
 /* ============================================================
-   ROTA: /api/recommend-destinations (IA recomenda vários)
+   ROTA: /api/recommend-destinations
    ============================================================ */
 app.post('/api/recommend-destinations', async (req, res) => {
   try {
@@ -437,7 +437,6 @@ ${exclude?.length ? `
 ${exclude.map(n => `- ${n}`).join('\n')}
 
 Você DEVE escolher destinos TOTALMENTE DIFERENTES dos listados acima!
-Se você repetir qualquer um deles, a resposta será rejeitada.
 ` : ''}
 
 REGRAS OBRIGATÓRIAS:
@@ -447,7 +446,6 @@ REGRAS OBRIGATÓRIAS:
 4. Se orçamento baixo, foque em destinos nacionais
 5. Se alto, inclua destinos internacionais
 6. Misture destinos famosos e menos conhecidos
-7. ${exclude?.length ? 'NÃO repita NENHUM destino da lista de exclusão acima!' : 'Seja variado'}
 
 FORMATO (JSON puro):
 {
@@ -534,10 +532,10 @@ app.post('/api/generate-by-climate', async (req, res) => {
 
     const climaTexto = climateMap[climate] || climate;
 
-    console.log(`🌡️ IA gerando ${count || 6} destinos de clima "${climate}"`);
+    console.log(`🌡️ IA gerando ${count || 8} destinos de clima "${climate}"`);
 
     const prompt = `
-Você é um especialista em viagens. Gere ${count || 6} destinos de viagem com o seguinte CLIMA:
+Você é um especialista em viagens. Gere ${count || 8} destinos de viagem com o seguinte CLIMA:
 
 🌡️ CLIMA: ${climaTexto}
 - Saindo de: ${origin || 'Não informado (assuma São Paulo)'}
@@ -548,6 +546,10 @@ REGRAS:
 3. Varie os países/estados (não repita)
 4. Inclua destinos conhecidos e alguns menos explorados
 5. NUNCA invente cidades — use destinos REAIS
+6. Para clima "calor", inclua: Cancún, Miami, Natal, Maceió, Jericoacoara, Rio, Salvador, Fortaleza, Recife, Porto de Galinhas, etc.
+7. Para clima "frio", inclua: Gramado, Canela, Campos do Jordão, Ushuaia, Bariloche, Reykjavik, etc.
+8. Para clima "tropical", inclua: Bali, Fernando de Noronha, Bonito, Chapada dos Guimarães, etc.
+9. Para clima "seco", inclua: Cairo, Dubai, Marrakech, Atacama, Chapada Diamantina, etc.
 
 FORMATO (JSON puro):
 {
