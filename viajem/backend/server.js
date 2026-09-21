@@ -271,6 +271,7 @@ app.get('/', (req, res) => {
       'GET /test-estado', 
       'POST /api/search-destination', 
       'POST /api/recommend-destinations',
+      'POST /api/generate-by-climate',
       'POST /api/itinerary'
     ]
   });
@@ -347,9 +348,6 @@ ${instrucaoTransporte}
 2. Se não souber atrações REAIS de "${query}", use termos GENÉRICOS: "Centro Histórico", "Praça Central", "Igreja Matriz", "Mercado Municipal"
 3. Para cidades pequenas/médias, use ATRAÇÕES GENÉRICAS
 
-⚠️ SOBRE A IMAGEM:
-- Use "https://source.unsplash.com/featured/?${encodeURIComponent(query)},city,travel,brazil"
-
 FORMATO (JSON puro):
 {
   "id": 9999,
@@ -364,7 +362,6 @@ FORMATO (JSON puro):
   "transport": { "recommended": "bus", "flightAvailable": false, "busAvailable": true },
   "currency": "R$",
   "attractions": ["Praça Central", "Igreja Matriz", "Museu Municipal"],
-  "image": "https://source.unsplash.com/featured/?NOMEDACIDADE,brazil,travel",
   "description": "Descrição curta e realista",
   "rating": 8.5,
   "idealDays": 3,
@@ -406,7 +403,7 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
     destination.state = destinoUFNome(transporte.ufDestino) || destination.state;
 
     if (!destination.image || !destination.image.startsWith('http')) {
-      destination.image = `https://source.unsplash.com/featured/?${encodeURIComponent(destination.name)},city,travel`;
+      destination.image = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1600&q=80';
     }
 
     console.log(`✅ ${destination.name}`);
@@ -434,15 +431,23 @@ PERFIL DO VIAJANTE:
 - Mês: ${month || 'Flexível'}
 - Clima preferido: ${climate || 'Variado'}
 - Orçamento: ${budget || 'Sem restrição'}
-${exclude?.length ? `- NÃO recomende estas cidades (já sugeridas): ${exclude.join(', ')}` : ''}
 
-REGRAS:
+${exclude?.length ? `
+🚫⚠️ MUITO IMPORTANTE — NÃO RECOMENDE ESTES DESTINOS (já foram sugeridos):
+${exclude.map(n => `- ${n}`).join('\n')}
+
+Você DEVE escolher destinos TOTALMENTE DIFERENTES dos listados acima!
+Se você repetir qualquer um deles, a resposta será rejeitada.
+` : ''}
+
+REGRAS OBRIGATÓRIAS:
 1. Recomende destinos REAIS que existem
-2. Varie os destinos (não repita país/estado)
-3. Considere mês, clima e orçamento
+2. Varie países/estados (NÃO repita o mesmo local)
+3. Considere o mês, clima e orçamento
 4. Se orçamento baixo, foque em destinos nacionais
 5. Se alto, inclua destinos internacionais
 6. Misture destinos famosos e menos conhecidos
+7. ${exclude?.length ? 'NÃO repita NENHUM destino da lista de exclusão acima!' : 'Seja variado'}
 
 FORMATO (JSON puro):
 {
@@ -472,15 +477,6 @@ FORMATO (JSON puro):
     }
   ]
 }
-
-⚠️ SOBRE A IMAGEM (MUITO IMPORTANTE):
-- Use uma URL de imagem REAL do principal ponto turístico de ${query}
-- Prefira o formato: "https://source.unsplash.com/1600x900/?PONTO-TURISTICO,CIDADE"
-- Exemplo para Rio: "https://source.unsplash.com/1600x900/?cristo-redentor,rio-de-janeiro"
-- Exemplo para Paris: "https://source.unsplash.com/1600x900/?eiffel-tower,paris"
-- Exemplo para Gramado: "https://source.unsplash.com/1600x900/?gramado,rio-grande-do-sul"
-- Use sempre palavras-chave em INGLÊS separadas por vírgula (sem espaços)
-- Se não souber um ponto turístico específico, use apenas: "https://source.unsplash.com/1600x900/?NOME-DA-CIDADE"
 
 ⚠️ SOBRE PREÇOS:
 - Valores realistas em R$
@@ -514,6 +510,103 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
   } catch (error) {
     console.error('❌ Erro IA recomendação:', error);
     res.status(500).json({ error: 'Erro ao recomendar destinos', details: error.message });
+  }
+});
+
+/* ============================================================
+   ROTA: /api/generate-by-climate (IA gera várias por clima)
+   ============================================================ */
+app.post('/api/generate-by-climate', async (req, res) => {
+  try {
+    const { climate, origin, count } = req.body;
+
+    if (!climate) {
+      return res.status(400).json({ error: 'Clima não informado' });
+    }
+
+    const climateMap = {
+      calor: 'Quente / Tropical (temperaturas altas, praias, sol)',
+      frio: 'Frio / Neve (temperaturas baixas, montanhas, neve)',
+      ameno: 'Ameno (temperaturas agradáveis, primavera/outono)',
+      tropical: 'Tropical (úmido, praias, florestas)',
+      seco: 'Seco / Desértico (pouca chuva, deserto, árido)'
+    };
+
+    const climaTexto = climateMap[climate] || climate;
+
+    console.log(`🌡️ IA gerando ${count || 6} destinos de clima "${climate}"`);
+
+    const prompt = `
+Você é um especialista em viagens. Gere ${count || 6} destinos de viagem com o seguinte CLIMA:
+
+🌡️ CLIMA: ${climaTexto}
+- Saindo de: ${origin || 'Não informado (assuma São Paulo)'}
+
+REGRAS:
+1. TODOS os destinos DEVEM ter esse clima (${climate})
+2. Misture destinos brasileiros E internacionais
+3. Varie os países/estados (não repita)
+4. Inclua destinos conhecidos e alguns menos explorados
+5. NUNCA invente cidades — use destinos REAIS
+
+FORMATO (JSON puro):
+{
+  "destinations": [
+    {
+      "name": "Nome da Cidade",
+      "country": "País",
+      "state": "Estado (se aplicável)",
+      "region": "Região",
+      "climate": "${climate}",
+      "climateLabel": "Ex: Quente / Tropical",
+      "bestMonths": [1,2,3,4,5,6,7,8,9,10,11,12],
+      "pricing": { "flight": 1200, "bus": 250, "hotelPerNight": 350, "tours": 400 },
+      "transport": { "recommended": "both", "flightAvailable": true, "busAvailable": true },
+      "attractions": ["Atração 1", "Atração 2", "Atração 3", "Atração 4"],
+      "description": "Descrição curta em 1 frase",
+      "rating": 9.0,
+      "idealDays": 4,
+      "tips": "Dica prática",
+      "activities": [
+        { "day": 1, "title": "Chegada", "desc": "Descrição" },
+        { "day": 2, "title": "Atração", "desc": "Descrição" },
+        { "day": 3, "title": "Passeio", "desc": "Descrição" },
+        { "day": 4, "title": "Despedida", "desc": "Descrição" }
+      ]
+    }
+  ]
+}
+
+⚠️ SOBRE PREÇOS:
+- Use valores realistas em R$
+- Ajuste pela distância de ${origin || 'São Paulo'}
+
+O campo "climate" DEVE ser exatamente: "${climate}"
+`;
+
+    const completion = await groq.chat.completions.create({
+      model: "openai/gpt-oss-120b",
+      messages: [
+        { role: "system", content: "Você é um especialista em viagens que SEMPRE gera destinos REAIS com o clima correto. Responda APENAS em JSON válido." },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.9,
+      max_tokens: 8000
+    });
+
+    let text = completion.choices[0]?.message?.content || '';
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const data = JSON.parse(text);
+    const generated = data.destinations || [];
+
+    console.log(`✅ IA gerou ${generated.length} destinos de "${climate}": ${generated.map(d => d.name).join(', ')}`);
+
+    res.json({ destinations: generated });
+  } catch (error) {
+    console.error('❌ Erro IA gerar por clima:', error);
+    res.status(500).json({ error: 'Erro ao gerar destinos', details: error.message });
   }
 });
 
@@ -580,5 +673,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
   console.log(`🗺️  Cidades: ${Object.keys(CIDADES_BR).length}`);
-  console.log(`📋 Rotas: /api/search-destination, /api/recommend-destinations, /api/itinerary`);
+  console.log(`📋 Rotas: /api/search-destination, /api/recommend-destinations, /api/generate-by-climate, /api/itinerary`);
 });
