@@ -206,121 +206,152 @@
      }
    }
    
-   /* ---------- BUSCA COM IA ---------- */
-   async function searchWithAI(query) {
-     const normalized = query.trim().toLowerCase();
-     if (aiCache.has(normalized)) return aiCache.get(normalized);
-   
-     const origin = document.getElementById('originInput')?.value.trim() || '';
-   
-     const response = await fetch(`${API_URL}/api/search-destination`, {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify({
-         query, origin,
-         date: document.getElementById('dateInput')?.value || '',
-         climate: document.getElementById('climateSelect')?.value || '',
-         budget: document.getElementById('budgetSelect')?.value || ''
-       })
-     });
-   
-     if (!response.ok) throw new Error('Falha ao buscar destino');
-   
-     const data = await response.json();
-     if (!data.name || !data.country) throw new Error('Resposta inválida da IA');
-   
-     nextAIId++;
-     const destination = {
-       id: nextAIId,
-       name: data.name,
-       country: data.country,
-       state: data.state || '',
-       region: data.region || 'Mundo',
-       climate: ['calor', 'frio', 'ameno', 'tropical', 'seco'].includes(data.climate) ? data.climate : 'ameno',
-       climateLabel: data.climateLabel || 'Ameno',
-       bestMonths: data.bestMonths || [1,2,3,4,5,6,7,8,9,10,11,12],
-       pricing: {
-         flight: data.pricing?.flight ?? null,
-         bus: data.pricing?.bus ?? null,
-         hotelPerNight: data.pricing?.hotelPerNight || 200,
-         tours: data.pricing?.tours || 200
-       },
-       transport: data.transport || { recommended: 'both', flightAvailable: true, busAvailable: true, distanceKm: null },
-       attractions: data.attractions || [],
-       image: data.image || `https://source.unsplash.com/featured/?${encodeURIComponent(data.name)},travel`,
-       description: data.description || '',
-       rating: data.rating || 8.5,
-       idealDays: data.idealDays || 3,
-       tips: data.tips || '',
-       activities: data.activities || [],
-       fromAI: true,
-       origin
-     };
-   
-     console.log('✅ Destino IA criado:', destination.id, '-', destination.name);
-   
-     aiCache.set(normalized, destination);
-     if (!destinations.find(d => d.name.toLowerCase() === destination.name.toLowerCase())) {
-       destinations.push(destination);
-     }
-   
-     return destination;
-   }
-   
-   /* ---------- BUSCA MANUAL ---------- */
-   async function filterDestinations() {
-     const dateValue = document.getElementById('dateInput').value;
-     const month = dateValue ? new Date(dateValue + 'T00:00:00').getMonth() + 1 : null;
-     const climate = document.getElementById('climateSelect').value;
-     const destinationText = document.getElementById('destinationInput').value.trim();
-     const originText = document.getElementById('originInput').value.trim();
-   
-     const cardsContainer = document.getElementById('cardsContainer');
-     const resultCountSpan = document.getElementById('resultCount');
-     const title = document.getElementById('resultsScreenTitle');
-   
-     title.innerHTML = '<i class="fas fa-search"></i> Buscando...';
-     resultCountSpan.textContent = 'Buscando...';
-     cardsContainer.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><i class="fas fa-circle-notch fa-spin"></i><br>Buscando destinos...</div>`;
-     showScreen('resultsScreen');
-   
-     let filtered = destinations.filter(dest => {
-       if (month && !dest.bestMonths.includes(Number(month))) return false;
-       if (climate && dest.climate !== climate) return false;
-       if (destinationText) {
-         const s = destinationText.toLowerCase();
-         if (!dest.name.toLowerCase().includes(s) && !dest.country.toLowerCase().includes(s)) return false;
-       }
-       return true;
-     });
-   
-     if (destinationText && filtered.length === 0) {
-       try {
-         title.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Buscando com IA...';
-         resultCountSpan.textContent = 'IA trabalhando (10-15s)...';
-         const aiDestination = await searchWithAI(destinationText);
-         filtered = [aiDestination];
-       } catch (error) {
-         console.error('Erro busca IA:', error);
-         cardsContainer.innerHTML = `
-           <div class="empty-state" style="grid-column:1/-1;">
-             <i class="fas fa-exclamation-triangle"></i><br>
-             Não encontramos "${destinationText}".<br>
-           </div>`;
-         resultCountSpan.textContent = '0 destinos';
-         title.innerHTML = '<i class="fas fa-suitcase-rolling"></i> Resultados da busca';
-         return;
-       }
-     }
-   
-     filtered.sort((a, b) => {
-       const totalA = Math.min(a.pricing.flight || Infinity, a.pricing.bus || Infinity);
-       const totalB = Math.min(b.pricing.flight || Infinity, b.pricing.bus || Infinity);
-       return totalA - totalB;
-     });
-   
-     renderCards(filtered, false, originText);
-   }
+/* ---------- BUSCA MANUAL ---------- */
+async function filterDestinations() {
+  const dateValue = document.getElementById('dateInput').value;
+  const month = dateValue ? new Date(dateValue + 'T00:00:00').getMonth() + 1 : null;
+  const climate = document.getElementById('climateSelect').value;
+  const destinationText = document.getElementById('destinationInput').value.trim();
+  const originText = document.getElementById('originInput').value.trim();
+
+  const cardsContainer = document.getElementById('cardsContainer');
+  const resultCountSpan = document.getElementById('resultCount');
+  const title = document.getElementById('resultsScreenTitle');
+
+  title.innerHTML = '<i class="fas fa-search"></i> Buscando...';
+  resultCountSpan.textContent = 'Buscando...';
+  cardsContainer.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><i class="fas fa-circle-notch fa-spin"></i><br>Buscando destinos...</div>`;
+  showScreen('resultsScreen');
+
+  // 1️⃣ Filtra na base local
+  let filtered = destinations.filter(dest => {
+    if (month && !dest.bestMonths.includes(Number(month))) return false;
+    if (climate && dest.climate !== climate) return false;
+    if (destinationText) {
+      const s = destinationText.toLowerCase();
+      if (!dest.name.toLowerCase().includes(s) && !dest.country.toLowerCase().includes(s)) return false;
+    }
+    return true;
+  });
+
+  // 2️⃣ Se digitou destino específico e não achou, busca pela IA
+  if (destinationText && filtered.length === 0) {
+    try {
+      title.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Buscando com IA...';
+      resultCountSpan.textContent = 'IA trabalhando (10-15s)...';
+      const aiDestination = await searchWithAI(destinationText);
+      filtered = [aiDestination];
+    } catch (error) {
+      console.error('Erro busca IA:', error);
+      cardsContainer.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1;">
+          <i class="fas fa-exclamation-triangle"></i><br>
+          Não encontramos "${destinationText}".<br>
+        </div>`;
+      resultCountSpan.textContent = '0 destinos';
+      title.innerHTML = '<i class="fas fa-suitcase-rolling"></i> Resultados da busca';
+      return;
+    }
+  }
+
+  // 3️⃣ ✅ SE ESCOLHEU CLIMA E TEM POUCAS CIDADES, IA GERA MAIS
+  if (!destinationText && climate && filtered.length < 5) {
+    try {
+      title.innerHTML = `<i class="fas fa-wand-magic-sparkles"></i> IA gerando mais destinos de "${climate}"...`;
+      resultCountSpan.textContent = 'IA trabalhando (10-15s)...';
+
+      console.log(`🌡️ Poucas cidades com clima "${climate}" (${filtered.length}). Pedindo para IA...`);
+
+      // Nomes já existentes (para não duplicar)
+      const nomesExistentes = destinations.map(d => d.name.toLowerCase());
+
+      const response = await fetch(`${API_URL}/api/generate-by-climate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          climate,
+          origin: originText,
+          count: 8
+        })
+      });
+
+      if (!response.ok) throw new Error('Falha ao gerar destinos por clima');
+
+      const data = await response.json();
+      const novos = data.destinations || [];
+
+      console.log(`✅ IA gerou ${novos.length} novos destinos`);
+
+      // Adiciona só os que ainda não existem
+      const adicionados = [];
+      novos.forEach(r => {
+        const nomeLower = r.name.toLowerCase();
+        if (nomesExistentes.includes(nomeLower)) return;
+
+        nextAIId++;
+        const nova = {
+          id: nextAIId,
+          name: r.name,
+          country: r.country || 'Brasil',
+          state: r.state || '',
+          region: r.region || 'Mundo',
+          climate: climate,
+          climateLabel: r.climateLabel || climate,
+          bestMonths: r.bestMonths || [1,2,3,4,5,6,7,8,9,10,11,12],
+          pricing: {
+            flight: r.pricing?.flight ?? null,
+            bus: r.pricing?.bus ?? null,
+            hotelPerNight: r.pricing?.hotelPerNight || 300,
+            tours: r.pricing?.tours || 300
+          },
+          transport: r.transport || {
+            recommended: r.pricing?.flight ? 'both' : 'bus',
+            flightAvailable: !!r.pricing?.flight,
+            busAvailable: !!r.pricing?.bus
+          },
+          attractions: r.attractions || [],
+          image: r.image || 'https://images.unsplash.com/photo-1488646953014-85cf1c14a9f?w=1600&q=80',
+          description: r.description || '',
+          rating: r.rating || 8.5,
+          idealDays: r.idealDays || 3,
+          tips: r.tips || '',
+          activities: r.activities || [],
+          fromAI: true,
+          origin: originText
+        };
+
+        destinations.push(nova);
+        filtered.push(nova);
+        adicionados.push(nova.name);
+      });
+
+      console.log(`✅ ${adicionados.length} destinos adicionados: ${adicionados.join(', ')}`);
+
+      // Aviso de que veio da IA
+      if (adicionados.length > 0) {
+        setTimeout(() => {
+          const aviso = document.createElement('div');
+          aviso.className = 'ai-notice';
+          aviso.innerHTML = `<i class="fas fa-wand-magic-sparkles"></i> IA adicionou <strong>${adicionados.length}</strong> novos destinos de clima "${climate}"`;
+          cardsContainer.parentNode.insertBefore(aviso, cardsContainer);
+        }, 100);
+      }
+
+    } catch (error) {
+      console.warn('⚠️ IA falhou em gerar por clima:', error.message);
+      // Continua com o que já tem
+    }
+  }
+
+  // 4️⃣ Ordena e renderiza
+  filtered.sort((a, b) => {
+    const totalA = Math.min(a.pricing.flight || Infinity, a.pricing.bus || Infinity);
+    const totalB = Math.min(b.pricing.flight || Infinity, b.pricing.bus || Infinity);
+    return totalA - totalB;
+  });
+
+  renderCards(filtered, false, originText);
+}
    
    /* ---------- RENDERIZAÇÃO DOS CARDS ---------- */
    function renderCards(list, isAIPick = false, originText = '') {
