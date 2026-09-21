@@ -473,9 +473,14 @@ FORMATO (JSON puro):
   ]
 }
 
-⚠️ SOBRE IMAGEM:
-- Use: "https://source.unsplash.com/featured/?CIDADE,city,travel"
-- NUNCA invente URLs
+⚠️ SOBRE A IMAGEM (MUITO IMPORTANTE):
+- Use uma URL de imagem REAL do principal ponto turístico de ${query}
+- Prefira o formato: "https://source.unsplash.com/1600x900/?PONTO-TURISTICO,CIDADE"
+- Exemplo para Rio: "https://source.unsplash.com/1600x900/?cristo-redentor,rio-de-janeiro"
+- Exemplo para Paris: "https://source.unsplash.com/1600x900/?eiffel-tower,paris"
+- Exemplo para Gramado: "https://source.unsplash.com/1600x900/?gramado,rio-grande-do-sul"
+- Use sempre palavras-chave em INGLÊS separadas por vírgula (sem espaços)
+- Se não souber um ponto turístico específico, use apenas: "https://source.unsplash.com/1600x900/?NOME-DA-CIDADE"
 
 ⚠️ SOBRE PREÇOS:
 - Valores realistas em R$
