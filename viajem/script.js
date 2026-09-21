@@ -1,12 +1,10 @@
 /* ============================================================
-   VIAGEN AI - FRONTEND COMPLETO (IDs NUMÉRICOS)
+   VIAGEN AI - SCRIPT COMPLETO E FUNCIONAL
    ============================================================ */
 
 const API_URL = 'https://viagen.onrender.com';
 
-/* ------------------------------------------------------------
-   BASE DE DESTINOS - IDs numéricos simples
-   ------------------------------------------------------------ */
+/* ---------- BASE DE DESTINOS ---------- */
 const destinations = [
   { id: 1, name: "Rio de Janeiro", country: "Brasil", state: "Rio de Janeiro", region: "Sudeste", climate: "tropical", climateLabel: "Tropical / Quente", bestMonths: [12,1,2,3], pricing: { flight: 1200, bus: 250, hotelPerNight: 350, tours: 400 }, transport: { recommended: "both", flightAvailable: true, busAvailable: true, distanceKm: 430 }, attractions: ["Cristo Redentor", "Pão de Açúcar", "Copacabana", "Maracanã", "Escadaria Selarón"], image: "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?q=80&w=1470&auto=format&fit=crop", description: "Praias icônicas, montanhas e energia contagiante.", rating: 9.4, idealDays: 4, tips: "Leve protetor solar.", activities: [
     { day: 1, title: "Chegada + Copacabana", desc: "Check-in e praia." },
@@ -93,10 +91,9 @@ const destinations = [
 ];
 
 const aiCache = new Map();
-
-/* Contador global para IDs de IA */
 let nextAIId = 1000;
 
+/* ---------- COMPANHIAS ---------- */
 const airlines = [
   { code: "LA", name: "LATAM Airlines", logo: "LA", color: "#1c2c5b", rating: 8.4, perks: ["Bagagem 23kg", "Wi-Fi"], url: "https://www.latamairlines.com/br/pt" },
   { code: "G3", name: "Gol Linhas Aéreas", logo: "G3", color: "#ff6b00", rating: 8.0, perks: ["Bagagem 23kg", "Lanches"], url: "https://www.voegol.com.br/" },
@@ -239,7 +236,6 @@ async function searchWithAI(query) {
   const data = await response.json();
   if (!data.name || !data.country) throw new Error('Resposta inválida da IA');
 
-  // ✅ ID numérico simples
   nextAIId++;
   const destination = {
     id: nextAIId,
@@ -273,6 +269,7 @@ async function searchWithAI(query) {
   aiCache.set(normalized, destination);
   if (!destinations.find(d => d.name.toLowerCase() === destination.name.toLowerCase())) {
     destinations.push(destination);
+    console.log('✅ Adicionado em destinations. Total agora:', destinations.length);
   }
 
   return destination;
@@ -374,6 +371,9 @@ function renderCards(list, isAIPick = false, originText = '') {
     const totalFlight = hasFlight ? dest.pricing.flight + hotelTotal + dest.pricing.tours : null;
     const totalBus = hasBus ? dest.pricing.bus + hotelTotal + dest.pricing.tours : null;
 
+    // ✅ Usa NOME como identificador (não reseta)
+    const safeName = dest.name.replace(/'/g, "\\'");
+
     html += `
       <div class="card">
         <div class="card-img" style="background-image: linear-gradient(0deg,#00000060,#00000020), url('${dest.image}');">
@@ -432,61 +432,69 @@ function renderCards(list, isAIPick = false, originText = '') {
           </div>
 
           <div class="card-actions">
-             <button class="details-btn" data-action="details" data-name="${dest.name}">
-             <i class="fas fa-info-circle"></i> Detalhes
-              </button>
-              <button class="packages-btn" data-action="packages" data-name="${dest.name}">
-             <i class="fas fa-tags"></i> Ver pacotes
-             </button>
+            <button class="details-btn" data-action="details" data-name="${safeName}">
+              <i class="fas fa-info-circle"></i> Detalhes
+            </button>
+            <button class="packages-btn" data-action="packages" data-name="${safeName}">
+              <i class="fas fa-tags"></i> Ver pacotes
+            </button>
           </div>
         </div>
       </div>`;
   });
   container.innerHTML = html;
 
-  // ✅ Adiciona event listeners via JS (mais seguro que onclick inline)
+  // ✅ Event listeners via JS (mais robusto que onclick)
   container.querySelectorAll('[data-action]').forEach(btn => {
-  btn.addEventListener('click', (e) => {
-    const action = e.currentTarget.dataset.action;
-    const name = e.currentTarget.dataset.name;
-    console.log('🖱️ Clique:', action, '| Nome:', name);
-    
-    if (action === 'details') {
-      openModalByName(name);
-    } else if (action === 'packages') {
-      openPackagesByName(name);
-    }
+    btn.addEventListener('click', (e) => {
+      const action = e.currentTarget.dataset.action;
+      const name = e.currentTarget.dataset.name;
+      console.log('🖱️ Clique:', action, '| Nome:', name);
+      
+      if (action === 'details') {
+        openModalByName(name);
+      } else if (action === 'packages') {
+        openPackagesByName(name);
+      }
+    });
   });
-});
+}
 
 /* ---------- PACOTES ---------- */
 let currentDestination = null;
 let currentOffers = [];
 
-function openPackages(destId) {
-  console.log('🔍 [openPackages] ID recebido:', destId);
-  
-  const idNum = parseInt(destId, 10);
-  let dest = destinations.find(d => d.id === idNum);
-  
-  // Fallback: se não achou por ID, tenta achar pelo nome salvo no DOM
+/* ✅ Wrappers por nome (evita problemas com ID) */
+function openPackagesByName(name) {
+  console.log('🔍 [openPackagesByName] Nome:', name);
+  const dest = destinations.find(d => d.name === name);
   if (!dest) {
-    // Última chance: tenta pegar do cache de IA
-    for (const [key, value] of aiCache.entries()) {
-      if (value.id === idNum || String(value.id) === String(destId)) {
-        dest = value;
-        break;
-      }
-    }
+    alert('Destino não encontrado: ' + name);
+    return;
   }
+  openPackages(dest.id);
+}
+
+function openModalByName(name) {
+  console.log('🔍 [openModalByName] Nome:', name);
+  const dest = destinations.find(d => d.name === name);
+  if (!dest) {
+    alert('Destino não encontrado: ' + name);
+    return;
+  }
+  openModal(dest.id);
+}
+
+function openPackages(destId) {
+  console.log('🔍 [openPackages] ID:', destId);
+  const idNum = parseInt(destId, 10);
+  const dest = destinations.find(d => d.id === idNum);
   
   if (!dest) {
-    console.error('❌ Destino não encontrado. IDs disponíveis:', destinations.map(d => d.id));
     alert('Erro: destino não encontrado. Tente buscar novamente.');
     return;
   }
 
-  console.log('✅ Destino encontrado:', dest.name);
   currentDestination = dest;
 
   try {
@@ -520,17 +528,16 @@ function openPackages(destId) {
 
     renderOffers(offers, 'all');
     showScreen('packagesScreen');
-    console.log('✅ Tela de pacotes aberta!');
   } catch (error) {
-    console.error('❌ Erro ao abrir pacotes:', error);
-    alert('Erro ao abrir pacotes: ' + error.message);
+    console.error('❌ Erro:', error);
+    alert('Erro: ' + error.message);
   }
 }
 
 function generateOffers(dest) {
   const offers = [];
   const nights = dest.idealDays;
-  let offerCounter = 0;
+  let counter = 0;
 
   // VOOS
   if (dest.pricing.flight !== null && dest.pricing.flight !== undefined) {
@@ -543,7 +550,7 @@ function generateOffers(dest) {
       const stops = Math.floor(Math.random() * 3);
 
       offers.push({
-        id: ++offerCounter,
+        id: ++counter,
         type: 'flight',
         airline,
         name: `${airline.name} · ${dest.name}`,
@@ -565,7 +572,7 @@ function generateOffers(dest) {
       const duration = Math.round(2 + Math.random() * 12);
 
       offers.push({
-        id: ++offerCounter,
+        id: ++counter,
         type: 'bus',
         company,
         name: `${company.name} · ${dest.name}`,
@@ -585,7 +592,7 @@ function generateOffers(dest) {
     const oldPrice = Math.round(pricePerNight * 1.3);
 
     offers.push({
-      id: ++offerCounter,
+      id: ++counter,
       type: 'hotel',
       chain: hotel,
       name: `${hotel.name} · ${dest.name}`,
@@ -613,7 +620,7 @@ function generateOffers(dest) {
       const oldPrice = Math.round(price * 1.3);
 
       offers.push({
-        id: ++offerCounter,
+        id: ++counter,
         type: 'package',
         chain: { name: provider.name, color: provider.color, logo: provider.logo },
         name: `Pacote ${provider.name} (avião) · ${dest.name}`,
@@ -630,7 +637,7 @@ function generateOffers(dest) {
       const oldPrice = Math.round(price * 1.25);
 
       offers.push({
-        id: ++offerCounter,
+        id: ++counter,
         type: 'package',
         chain: { name: provider.name, color: provider.color, logo: provider.logo },
         name: `Pacote ${provider.name} (ônibus) · ${dest.name}`,
@@ -673,7 +680,7 @@ function renderOffers(offers, filter) {
     let actionButtons = '';
     if (offer.type === 'flight') {
       actionButtons = `
-        <button class="offer-buy" data-action="flight-details" data-offer-id="${offer.id}">
+        <button class="offer-buy" data-offer-action="flight-details" data-offer-id="${offer.id}">
           <i class="fas fa-info-circle"></i> Detalhes
         </button>
         <a href="${bookingUrl}" target="_blank" rel="noopener noreferrer" class="offer-buy secondary">
@@ -681,7 +688,7 @@ function renderOffers(offers, filter) {
         </a>`;
     } else if (offer.type === 'hotel') {
       actionButtons = `
-        <button class="offer-buy" data-action="hotel-details" data-offer-id="${offer.id}">
+        <button class="offer-buy" data-offer-action="hotel-details" data-offer-id="${offer.id}">
           <i class="fas fa-info-circle"></i> Detalhes
         </button>
         <a href="${bookingUrl}" target="_blank" rel="noopener noreferrer" class="offer-buy secondary">
@@ -722,10 +729,10 @@ function renderOffers(offers, filter) {
     `;
   }).join('');
 
-  // ✅ Event listeners para botões de detalhes
-  container.querySelectorAll('[data-action]').forEach(btn => {
+  // ✅ Listeners dos botões de detalhes de ofertas
+  container.querySelectorAll('[data-offer-action]').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const action = e.currentTarget.dataset.action;
+      const action = e.currentTarget.dataset.offerAction;
       const offerId = parseInt(e.currentTarget.dataset.offerId, 10);
       if (action === 'flight-details') openFlightModal(offerId);
       if (action === 'hotel-details') openHotelModal(offerId);
@@ -901,7 +908,7 @@ function openHotelModal(offerId) {
   document.body.style.overflow = 'hidden';
 }
 
-/* ---------- IA — ROTEIRO ---------- */
+/* ---------- IA - ROTEIRO ---------- */
 function aiGenerateItinerary() {
   const dateValue = document.getElementById('dateInput').value;
   const month = dateValue ? new Date(dateValue + 'T00:00:00').getMonth() + 1 : null;
@@ -1084,17 +1091,16 @@ function runAISearch() {
 }
 
 /* ---------- MODAL PRINCIPAL (DETALHES DO DESTINO) ---------- */
-function openModalByName(name) {
-  console.log('🔍 [openModalByName] Nome:', name);
-  const dest = destinations.find(d => d.name === name);
+function openModal(id) {
+  console.log('🔍 [openModal] ID:', id);
+  const idNum = parseInt(id, 10);
+  const dest = destinations.find(d => d.id === idNum);
+  
   if (!dest) {
-    alert('Destino não encontrado: ' + name);
+    console.error('❌ Destino não encontrado:', id);
+    alert('Destino não encontrado.');
     return;
   }
-  openModal(dest.id);
-}
-  
-  console.log('✅ Detalhes de:', dest.name);
 
   const nights = dest.idealDays;
   const hotelTotal = calculateHotelTotal(dest.pricing, nights);
@@ -1218,3 +1224,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Escape') closeModal();
   });
 });
+
+/* ============================================================
+   EXPÕE FUNÇÕES GLOBALMENTE (garantia extra)
+   ============================================================ */
+window.openModal = openModal;
+window.openPackages = openPackages;
+window.openModalByName = openModalByName;
+window.openPackagesByName = openPackagesByName;
+window.openFlightModal = openFlightModal;
+window.openHotelModal = openHotelModal;
+window.closeModal = closeModal;
+
+console.log('✅ ViaGen AI carregado. Funções expostas em window.');

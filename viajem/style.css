@@ -1729,3 +1729,51 @@ body {
     grid-template-columns: 1fr;
   }
 }
+/* ==============================
+   AJUDA NOS CAMPOS DE INPUT
+   ============================== */
+.help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #7b5cff;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  margin-left: 0.4rem;
+  cursor: help;
+  transition: 0.2s;
+}
+
+.help-icon:hover {
+  background: #ff7b2c;
+  transform: scale(1.1);
+}
+
+.input-help {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: #7a8ba8;
+  font-weight: 500;
+  margin-top: 0.15rem;
+}
+
+.input-help i {
+  color: #7b5cff;
+  font-size: 0.7rem;
+}
+
+/* Destaca o input quando está com foco */
+.input-group input:focus + .input-help {
+  color: #5c3ec9;
+}
+
+/* Sugestão do datalist */
+.input-group input[list]::-webkit-calendar-picker-indicator {
+  display: none;
+}

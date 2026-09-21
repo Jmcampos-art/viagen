@@ -24,16 +24,98 @@
       <i class="fas fa-sliders-h"></i> Conte seu perfil de viagem
     </div>
 
-    <div class="search-grid">
-      <div class="input-group">
-        <label><i class="fas fa-plane-departure"></i> Saindo de</label>
-        <input type="text" id="originInput" placeholder="Ex: São Paulo, Botucatu...">
-      </div>
+    <div class="input-group">
+  <label>
+    <i class="fas fa-plane-departure"></i> Saindo de
+    <span class="help-icon" title="Digite o nome da sua cidade de origem. Ex: São Paulo, Rio de Janeiro, Botucatu...">?</span>
+  </label>
+  <input 
+    type="text" 
+    id="originInput" 
+    placeholder="Ex: São Paulo, Botucatu..." 
+    list="cidadesList"
+    autocomplete="off"
+    title="Digite o nome da cidade de onde você vai sair. Ex: São Paulo, Rio de Janeiro, Botucatu"
+  >
+  <small class="input-help">
+    <i class="fas fa-info-circle"></i> Digite o nome da sua cidade de origem
+  </small>
+</div>
 
-      <div class="input-group">
-        <label><i class="fas fa-location-dot"></i> Destino (opcional)</label>
-        <input type="text" id="destinationInput" placeholder="Ex: Rio de Janeiro, Santos...">
-      </div>
+<div class="input-group">
+  <label>
+    <i class="fas fa-location-dot"></i> Destino
+    <span class="help-icon" title="Digite o nome da cidade para onde quer ir. Ex: Rio de Janeiro, Santos, Gramado...">?</span>
+  </label>
+  <input 
+    type="text" 
+    id="destinationInput" 
+    placeholder="Ex: Rio de Janeiro, Santos..." 
+    list="cidadesList"
+    autocomplete="off"
+    title="Digite o nome da cidade para onde você quer viajar. Ex: Rio de Janeiro, Santos, Gramado"
+  >
+  <small class="input-help">
+    <i class="fas fa-info-circle"></i> Digite o nome da cidade de destino
+  </small>
+</div>
+
+<!-- Lista de sugestões de cidades (compartilhada) -->
+<datalist id="cidadesList">
+  <option value="São Paulo">
+  <option value="Rio de Janeiro">
+  <option value="Santos">
+  <option value="Botucatu">
+  <option value="Bauru">
+  <option value="Campinas">
+  <option value="Ribeirão Preto">
+  <option value="São José dos Campos">
+  <option value="Sorocaba">
+  <option value="Piracicaba">
+  <option value="Itu">
+  <option value="Pardinho">
+  <option value="Gramado">
+  <option value="Canela">
+  <option value="Porto Alegre">
+  <option value="Florianópolis">
+  <option value="Balneário Camboriú">
+  <option value="Joinville">
+  <option value="Blumenau">
+  <option value="Curitiba">
+  <option value="Londrina">
+  <option value="Maringá">
+  <option value="Foz do Iguaçu">
+  <option value="Salvador">
+  <option value="Recife">
+  <option value="Fortaleza">
+  <option value="Natal">
+  <option value="Maceió">
+  <option value="Porto de Galinhas">
+  <option value="Belo Horizonte">
+  <option value="Ouro Preto">
+  <option value="Uberlândia">
+  <option value="Vitória">
+  <option value="Brasília">
+  <option value="Goiânia">
+  <option value="Cuiabá">
+  <option value="Campo Grande">
+  <option value="Bonito">
+  <option value="Manaus">
+  <option value="Belém">
+  <option value="Lisboa">
+  <option value="Paris">
+  <option value="Roma">
+  <option value="Barcelona">
+  <option value="Madri">
+  <option value="Londres">
+  <option value="Nova York">
+  <option value="Miami">
+  <option value="Buenos Aires">
+  <option value="Santiago">
+  <option value="Cancún">
+  <option value="Dubai">
+  <option value="Tóquio">
+</datalist>
 
       <div class="input-group">
         <label><i class="fas fa-calendar-alt"></i> Data da viagem</label>
