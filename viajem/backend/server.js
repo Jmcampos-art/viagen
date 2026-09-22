@@ -2,6 +2,14 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import Groq from 'groq-sdk';
+import {
+  CIDADES_POR_PAIS,
+  getCidadesDoPais,
+  getPaisesDisponiveis,
+  cidadePertenceAoPais,
+  filtrarDuplicatas,
+  sortearCidades
+} from './cidades.js';
 
 dotenv.config();
 
@@ -21,14 +29,11 @@ const imageCache = new Map();
    ============================================================ */
 async function buscarImagemCidade(nomeCidade, pontoTuristico = '') {
   const cacheKey = `${nomeCidade}_${pontoTuristico}`.toLowerCase();
-  
-  // ✅ Cache em memória
+
   if (imageCache.has(cacheKey)) {
-    console.log(`💾 Imagem em cache: ${cacheKey}`);
     return imageCache.get(cacheKey);
   }
 
-  // ✅ Fallbacks de imagem (nunca fica em branco)
   const FALLBACKS = [
     'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1600&q=80',
     'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1600&q=80',
@@ -37,7 +42,6 @@ async function buscarImagemCidade(nomeCidade, pontoTuristico = '') {
 
   const getFallback = () => FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)];
 
-  // Ordem de tentativas
   const queries = [
     pontoTuristico ? `${nomeCidade} ${pontoTuristico}` : null,
     `${nomeCidade} city`,
@@ -49,7 +53,7 @@ async function buscarImagemCidade(nomeCidade, pontoTuristico = '') {
   for (const query of queries) {
     try {
       const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=5&gsrnamespace=6&prop=imageinfo&iiprop=url&iiurlwidth=1600&format=json&origin=*`;
-      
+
       const response = await fetch(url, {
         headers: { 'User-Agent': 'ViaGenAI/1.0 (travel-planner)' }
       });
@@ -57,15 +61,14 @@ async function buscarImagemCidade(nomeCidade, pontoTuristico = '') {
       if (!response.ok) continue;
 
       const data = await response.json();
-      
+
       if (data.query?.pages) {
         const pages = Object.values(data.query.pages);
-        
+
         for (const page of pages) {
           const imageInfo = page.imageinfo?.[0];
           if (imageInfo?.thumburl) {
             const imgUrl = imageInfo.thumburl;
-            // Filtra imagens válidas (não SVG/ícones)
             if (imgUrl.match(/\.(jpg|jpeg|png|webp)/i) || imgUrl.includes('/thumb/')) {
               console.log(`✅ Wikimedia: "${query}" → ${imgUrl.substring(0, 80)}...`);
               imageCache.set(cacheKey, imgUrl);
@@ -80,7 +83,6 @@ async function buscarImagemCidade(nomeCidade, pontoTuristico = '') {
     }
   }
 
-  // Se não achou nada, usa fallback genérico
   console.log(`❌ Nenhuma imagem encontrada para "${nomeCidade}". Usando fallback.`);
   const fallback = getFallback();
   imageCache.set(cacheKey, fallback);
@@ -88,7 +90,7 @@ async function buscarImagemCidade(nomeCidade, pontoTuristico = '') {
 }
 
 /* ============================================================
-   BANCO DE CIDADES BRASILEIRAS
+   BANCO DE CIDADES BRASILEIRAS (para decidir transporte)
    ============================================================ */
 const CIDADES_BR = {
   "sao paulo": "SP", "são paulo": "SP", "capital sp": "SP",
@@ -254,14 +256,7 @@ const CIDADES_BR = {
 
   "brasilia": "DF", "ceilandia": "DF", "taguatinga": "DF",
   "samambaia": "DF", "planaltina": "DF", "guara": "DF",
-  "sobradinho": "DF", "recanto das emas": "DF", "gama": "DF",
-
-  "lisboa": "PT", "porto": "PT", "paris": "FR", "roma": "IT",
-  "barcelona": "ES", "madri": "ES", "londres": "UK",
-  "nova york": "US", "miami": "US", "orlando": "US",
-  "buenos aires": "AR", "santiago": "CL", "montevideu": "UY",
-  "toquio": "JP", "cancun": "MX", "dubai": "AE",
-  "cairo": "EG", "bali": "ID", "sydney": "AU"
+  "sobradinho": "DF", "recanto das emas": "DF", "gama": "DF"
 };
 
 /* ============================================================
@@ -271,21 +266,21 @@ function getEstado(cidade) {
   if (!cidade) return null;
   const nome = cidade.toLowerCase().trim()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  
+
   if (CIDADES_BR[nome]) return CIDADES_BR[nome];
-  
+
   for (const [key, uf] of Object.entries(CIDADES_BR)) {
     const keyNorm = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     if (keyNorm === nome) return uf;
   }
-  
+
   for (const [key, uf] of Object.entries(CIDADES_BR)) {
     const keyNorm = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     if (keyNorm.includes(nome) || nome.includes(keyNorm)) {
       if (nome.length >= 4) return uf;
     }
   }
-  
+
   return null;
 }
 
@@ -334,20 +329,166 @@ function destinoUFNome(uf) {
 }
 
 /* ============================================================
+   VALIDAÇÃO E FALLBACK DE DESTINOS
+   ============================================================ */
+
+/**
+ * Garante que as recomendações são únicas e reais.
+ * Se faltar destino, completa com cidades do catálogo.
+ */
+function validarECompletarRecomendacoes(recommendations, exclude, count) {
+  // 1. Filtra duplicatas contra a lista de excluídos
+  const jaUsadosSet = new Set((exclude || []).map(n => n.toLowerCase().trim()));
+  const unicos = [];
+  const vistos = new Set();
+
+  for (const rec of recommendations) {
+    const nomeNorm = (rec.name || '').toLowerCase().trim();
+    if (!nomeNorm) continue;
+    if (jaUsadosSet.has(nomeNorm)) continue;
+    if (vistos.has(nomeNorm)) continue;
+
+    vistos.add(nomeNorm);
+    unicos.push(rec);
+  }
+
+  // 2. Se já temos o suficiente, retorna
+  if (unicos.length >= count) return unicos.slice(0, count);
+
+  // 3. Se faltar, completa com cidades REAIS do catálogo
+  const paisesUsados = [...new Set(unicos.map(r => r.country).filter(Boolean))];
+  const todosPaises = getPaisesDisponiveis();
+
+  // Prioriza países já sugeridos, depois os demais
+  const paisesCandidatos = [
+    ...paisesUsados,
+    ...todosPaises.filter(p => !paisesUsados.includes(p))
+  ];
+
+  const jaTemNome = unicos.map(r => r.name);
+
+  for (const pais of paisesCandidatos) {
+    if (unicos.length >= count) break;
+
+    const faltam = count - unicos.length;
+    const cidadesExtras = sortearCidades(pais, faltam + 5, [...exclude || [], ...jaTemNome]);
+
+    for (const cidade of cidadesExtras) {
+      if (unicos.length >= count) break;
+      const nomeNorm = cidade.toLowerCase().trim();
+      if (vistos.has(nomeNorm)) continue;
+
+      vistos.add(nomeNorm);
+      jaTemNome.push(cidade);
+
+      unicos.push({
+        name: cidade,
+        country: pais,
+        state: '',
+        region: 'Mundo',
+        climate: 'ameno',
+        climateLabel: 'Ameno',
+        bestMonths: [1,2,3,4,5,6,7,8,9,10,11,12],
+        pricing: { flight: 1200, bus: 300, hotelPerNight: 300, tours: 300 },
+        transport: { recommended: 'both', flightAvailable: true, busAvailable: true },
+        attractions: [],
+        description: 'Destino sugerido pelo catálogo ViaGen.',
+        rating: 8.0,
+        idealDays: 4,
+        tips: 'Verifique atrações e melhores épocas antes de viajar.',
+        whyRecommend: 'Sugestão baseada no catálogo de cidades reais.',
+        activities: [
+          { day: 1, title: 'Chegada', desc: 'Conheça o centro da cidade.' },
+          { day: 2, title: 'Passeio local', desc: 'Explore pontos turísticos.' },
+          { day: 3, title: 'Cultura', desc: 'Museus e gastronomia.' },
+          { day: 4, title: 'Despedida', desc: 'Últimas compras e retorno.' }
+        ],
+        fromCatalog: true
+      });
+    }
+  }
+
+  return unicos.slice(0, count);
+}
+
+/**
+ * Mesma coisa para a rota /generate-by-climate
+ */
+function validarECompletarPorClima(destinations, climate, count) {
+  const unicos = [];
+  const vistos = new Set();
+
+  for (const dest of destinations) {
+    const nomeNorm = (dest.name || '').toLowerCase().trim();
+    if (!nomeNorm) continue;
+    if (vistos.has(nomeNorm)) continue;
+    vistos.add(nomeNorm);
+    unicos.push(dest);
+  }
+
+  if (unicos.length >= count) return unicos.slice(0, count);
+
+  // Completa com cidades do catálogo que combinem com o clima
+  const paises = getPaisesDisponiveis();
+
+  for (const pais of paises) {
+    if (unicos.length >= count) break;
+    const faltam = count - unicos.length;
+    const cidades = getCidadesDoPais(pais);
+    const disponiveis = cidades.filter(c => !vistos.has(c.toLowerCase()));
+    const embaralhadas = [...disponiveis].sort(() => Math.random() - 0.5).slice(0, faltam);
+
+    for (const cidade of embaralhadas) {
+      if (unicos.length >= count) break;
+      const nomeNorm = cidade.toLowerCase();
+      if (vistos.has(nomeNorm)) continue;
+
+      vistos.add(nomeNorm);
+      unicos.push({
+        name: cidade,
+        country: pais,
+        state: '',
+        region: 'Mundo',
+        climate: climate,
+        climateLabel: climate,
+        bestMonths: [1,2,3,4,5,6,7,8,9,10,11,12],
+        pricing: { flight: 1200, bus: 300, hotelPerNight: 300, tours: 300 },
+        transport: { recommended: 'both', flightAvailable: true, busAvailable: true },
+        attractions: [],
+        description: 'Destino sugerido pelo catálogo ViaGen.',
+        rating: 8.0,
+        idealDays: 4,
+        tips: 'Verifique atrações e melhores épocas antes de viajar.',
+        activities: [
+          { day: 1, title: 'Chegada', desc: 'Conheça o centro.' },
+          { day: 2, title: 'Passeio', desc: 'Explore pontos turísticos.' },
+          { day: 3, title: 'Cultura', desc: 'Museus e gastronomia.' },
+          { day: 4, title: 'Despedida', desc: 'Retorno.' }
+        ],
+        fromCatalog: true
+      });
+    }
+  }
+
+  return unicos.slice(0, count);
+}
+
+/* ============================================================
    ROTA RAIZ
    ============================================================ */
 app.get('/', (req, res) => {
   res.json({
     status: 'Backend ViaGen AI + Groq funcionando! 🚀',
     modelo: 'openai/gpt-oss-120b',
-    cidades: Object.keys(CIDADES_BR).length,
+    cidadesBR: Object.keys(CIDADES_BR).length,
+    paises: getPaisesDisponiveis().length,
     imagensCache: imageCache.size,
     rotas: [
-      'GET /', 
-      'GET /test-ai', 
-      'GET /test-estado', 
+      'GET /',
+      'GET /test-ai',
+      'GET /test-estado',
       'GET /test-image?cidade=Rio',
-      'POST /api/search-destination', 
+      'POST /api/search-destination',
       'POST /api/recommend-destinations',
       'POST /api/generate-by-climate',
       'POST /api/itinerary'
@@ -360,11 +501,10 @@ app.get('/test-estado', (req, res) => {
   res.json({ cidade, estado: getEstado(cidade) });
 });
 
-/* Rota de teste de imagem */
 app.get('/test-image', async (req, res) => {
   const cidade = req.query.cidade || 'Rio de Janeiro';
   const ponto = req.query.ponto || '';
-  
+
   const imagem = await buscarImagemCidade(cidade, ponto);
   res.json({ cidade, ponto, imagem });
 });
@@ -504,15 +644,17 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
 
 /* ============================================================
    ROTA: /api/recommend-destinations
+   (AGORA COM VALIDAÇÃO DE DUPLICATAS + FALLBACK)
    ============================================================ */
 app.post('/api/recommend-destinations', async (req, res) => {
   try {
     const { origin, month, climate, budget, count, exclude } = req.body;
+    const total = count || 4;
 
-    console.log(`🤖 IA recomendando ${count || 4} destinos | Origem: ${origin || '?'} | Excluir: ${exclude?.length || 0}`);
+    console.log(`🤖 IA recomendando ${total} destinos | Origem: ${origin || '?'} | Excluir: ${exclude?.length || 0}`);
 
     const prompt = `
-Você é um especialista em viagens. Recomende ${count || 4} destinos de viagem DIFERENTES em português do Brasil.
+Você é um especialista em viagens. Recomende ${total} destinos de viagem DIFERENTES em português do Brasil.
 
 PERFIL DO VIAJANTE:
 - Saindo de: ${origin || 'Não informado (assuma São Paulo)'}
@@ -525,11 +667,13 @@ ${exclude?.length ? `
 ${exclude.map(n => `- ${n}`).join('\n')}
 ` : ''}
 
-REGRAS:
+REGRAS OBRIGATÓRIAS:
 1. Recomende destinos REAIS que existem
-2. Varie países/estados (NÃO repita o mesmo local)
-3. Considere o mês, clima e orçamento
-4. Misture destinos famosos e menos conhecidos
+2. CADA destino deve ser de um PAÍS DIFERENTE (não repita país!)
+3. NÃO repita cidades que já apareceram antes
+4. Considere o mês, clima e orçamento
+5. Misture destinos famosos e menos conhecidos
+6. NUNCA coloque a mesma cidade em países diferentes
 
 FORMATO (JSON puro):
 {
@@ -572,7 +716,7 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
     const completion = await groq.chat.completions.create({
       model: "openai/gpt-oss-120b",
       messages: [
-        { role: "system", content: "Você é um especialista em viagens que SEMPRE recomenda destinos REAIS. Nunca invente cidades. Responda APENAS em JSON válido." },
+        { role: "system", content: "Você é um especialista em viagens que SEMPRE recomenda destinos REAIS. Nunca invente cidades nem repita países. Responda APENAS em JSON válido." },
         { role: "user", content: prompt }
       ],
       response_format: { type: "json_object" },
@@ -585,11 +729,20 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
 
     const data = JSON.parse(text);
     const recommendations = data.recommendations || [];
-    console.log(`✅ IA recomendou ${recommendations.length} destinos. Buscando imagens...`);
+    console.log(`✅ IA recomendou ${recommendations.length} destinos. Validando...`);
+
+    // 🛡️ VALIDA E COMPLETA COM CIDADES REAIS DO CATÁLOGO
+    const recomendacoesValidadas = validarECompletarRecomendacoes(
+      recommendations,
+      exclude,
+      total
+    );
+
+    console.log(`✅ ${recomendacoesValidadas.length} destinos válidos. Buscando imagens...`);
 
     // 🖼️ BUSCA IMAGENS PARA CADA RECOMENDAÇÃO
     const recommendationsComImagens = await Promise.all(
-      recommendations.map(async (rec) => {
+      recomendacoesValidadas.map(async (rec) => {
         const primeiroPonto = rec.attractions?.[0] || '';
         const imagemReal = await buscarImagemCidade(rec.name, primeiroPonto);
         rec.image = imagemReal;
@@ -607,10 +760,12 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
 
 /* ============================================================
    ROTA: /api/generate-by-climate
+   (AGORA COM VALIDAÇÃO DE DUPLICATAS + FALLBACK)
    ============================================================ */
 app.post('/api/generate-by-climate', async (req, res) => {
   try {
     const { climate, origin, count } = req.body;
+    const total = count || 8;
 
     if (!climate) {
       return res.status(400).json({ error: 'Clima não informado' });
@@ -626,18 +781,18 @@ app.post('/api/generate-by-climate', async (req, res) => {
 
     const climaTexto = climateMap[climate] || climate;
 
-    console.log(`🌡️ IA gerando ${count || 8} destinos de clima "${climate}"`);
+    console.log(`🌡️ IA gerando ${total} destinos de clima "${climate}"`);
 
     const prompt = `
-Você é um especialista em viagens. Gere ${count || 8} destinos de viagem com o seguinte CLIMA:
+Você é um especialista em viagens. Gere ${total} destinos de viagem com o seguinte CLIMA:
 
 🌡️ CLIMA: ${climaTexto}
 - Saindo de: ${origin || 'Não informado (assuma São Paulo)'}
 
-REGRAS:
+REGRAS OBRIGATÓRIAS:
 1. TODOS os destinos DEVEM ter esse clima (${climate})
-2. Misture destinos brasileiros E internacionais
-3. Varie os países/estados (não repita)
+2. CADA destino deve ser de um PAÍS ou ESTADO DIFERENTE (não repita!)
+3. NUNCA repita a mesma cidade em países diferentes
 4. Inclua destinos conhecidos e alguns menos explorados
 5. NUNCA invente cidades — use destinos REAIS
 
@@ -682,7 +837,7 @@ O campo "climate" DEVE ser exatamente: "${climate}"
     const completion = await groq.chat.completions.create({
       model: "openai/gpt-oss-120b",
       messages: [
-        { role: "system", content: "Você é um especialista em viagens que SEMPRE gera destinos REAIS com o clima correto. Responda APENAS em JSON válido." },
+        { role: "system", content: "Você é um especialista em viagens que SEMPRE gera destinos REAIS com o clima correto. Nunca repita cidades nem países. Responda APENAS em JSON válido." },
         { role: "user", content: prompt }
       ],
       response_format: { type: "json_object" },
@@ -695,11 +850,15 @@ O campo "climate" DEVE ser exatamente: "${climate}"
 
     const data = JSON.parse(text);
     const generated = data.destinations || [];
-    console.log(`✅ IA gerou ${generated.length} destinos de "${climate}". Buscando imagens...`);
+    console.log(`✅ IA gerou ${generated.length} destinos de "${climate}". Validando...`);
+
+    // 🛡️ VALIDA E COMPLETA COM CIDADES REAIS DO CATÁLOGO
+    const destinosValidados = validarECompletarPorClima(generated, climate, total);
+    console.log(`✅ ${destinosValidados.length} destinos válidos. Buscando imagens...`);
 
     // 🖼️ BUSCA IMAGENS PARA CADA DESTINO
     const generatedComImagens = await Promise.all(
-      generated.map(async (dest) => {
+      destinosValidados.map(async (dest) => {
         const primeiroPonto = dest.attractions?.[0] || '';
         const imagemReal = await buscarImagemCidade(dest.name, primeiroPonto);
         dest.image = imagemReal;
@@ -774,10 +933,28 @@ Retorne JSON puro:
   }
 });
 
+/* ============================================================
+   ROTA DE TESTE: /test-cidades
+   ============================================================ */
+app.get('/test-cidades', (req, res) => {
+  const pais = req.query.pais || 'Brasil';
+  const qtd = parseInt(req.query.qtd) || 5;
+
+  const cidades = sortearCidades(pais, qtd);
+  res.json({
+    pais,
+    totalDisponivel: getCidadesDoPais(pais).length,
+    cidadesSorteadas: cidades,
+    paisesDisponiveis: getPaisesDisponiveis()
+  });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
-  console.log(`🗺️  Cidades: ${Object.keys(CIDADES_BR).length}`);
+  console.log(`🗺️  Cidades BR: ${Object.keys(CIDADES_BR).length}`);
+  console.log(`🌍 Países no catálogo: ${getPaisesDisponiveis().length}`);
   console.log(`🖼️  Cache de imagens ativo`);
   console.log(`📋 Rotas: /api/search-destination, /api/recommend-destinations, /api/generate-by-climate, /api/itinerary`);
+  console.log(`🧪 Teste: GET /test-cidades?pais=Brasil&qtd=10`);
 });
