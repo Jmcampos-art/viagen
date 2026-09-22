@@ -227,73 +227,77 @@ const CIDADES_BR = {
 };
 
 /* ============================================================
-   FUNÇÕES AUXILIARES
+   ✅ getEstado CORRIGIDO
+   - Só retorna UF se a cidade for EXATAMENTE do Brasil
+   - Não faz busca parcial agressiva (evita Miami → SP)
    ============================================================ */
-function getEstado(cidade) {
-  if (!cidade) return null;
-  const nome = cidade.toLowerCase().trim()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-  if (CIDADES_BR[nome]) return CIDADES_BR[nome];
-
-  for (const [key, uf] of Object.entries(CIDADES_BR)) {
-    const keyNorm = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (keyNorm === nome) return uf;
-  }
-
-  for (const [key, uf] of Object.entries(CIDADES_BR)) {
-    const keyNorm = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (keyNorm.includes(nome) || nome.includes(keyNorm)) {
-      if (nome.length >= 4) return uf;
+   function getEstado(cidade) {
+    if (!cidade) return null;
+  
+    const nome = cidade.toLowerCase().trim()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  
+    // 1️⃣ Busca EXATA (sem acento)
+    if (CIDADES_BR[nome]) return CIDADES_BR[nome];
+  
+    // 2️⃣ Busca por chave exata normalizada
+    for (const [key, uf] of Object.entries(CIDADES_BR)) {
+      const keyNorm = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (keyNorm === nome) return uf;
     }
+  
+    // 3️⃣ Lista de cidades/palavras que NÃO devem ser tratadas como BR
+    const NAO_E_BR = [
+      'miami', 'orlando', 'nova york', 'new york', 'los angeles', 'chicago',
+      'boston', 'washington', 'las vegas', 'san francisco', 'seattle',
+      'lisboa', 'porto', 'paris', 'roma', 'milao', 'veneza', 'barcelona',
+      'madri', 'londres', 'amsterda', 'berlim', 'viena', 'atenas', 'praga',
+      'buenos aires', 'santiago', 'montevideu', 'lima', 'bogota', 'caracas',
+      'toquio', 'toquio', 'kyoto', 'osaka', 'pequim', 'xangai', 'seul',
+      'bangkok', 'bali', 'dubai', 'cairo', 'marrakech', 'cidade do cabo',
+      'sydney', 'melbourne', 'auckland', 'cancun', 'cidade do mexico',
+      'havana', 'san juan', 'punta cana', 'bariloche', 'ushuaia', 'mendoza',
+      'atacama', 'cusco', 'machu picchu', 'galapagos', 'cartagena',
+      'cidade do panama', 'san jose', 'guatemala', 'san salvador',
+      'reykjavik', 'dublin', 'edimburgo', 'bruxelas', 'zurique', 'genebra',
+      'munique', 'hamburgo', 'colonia', 'estocolmo', 'oslo', 'copenhague',
+      'helsinque', 'varsovia', 'budapeste', 'bucareste', 'sofia', 'zagreb',
+      'belgrado', 'istambul', 'capadocia', 'jerusalem', 'tel aviv',
+      'nova delhi', 'mumbai', 'bangalore', 'katmandu', 'colombo', 'hanói',
+      'ho chi minh', 'kuala lumpur', 'singapura', 'jacarta', 'manila',
+      'seul', 'taipé', 'hong kong', 'macau', 'nova zelandia',
+      'cidade do panamá', 'panama city', 'miami beach', 'key west',
+      'niagara falls', 'grand canyon', 'yellowstone', 'yosemite'
+    ];
+  
+    const textoLimpo = nome.replace(/[^a-z\s]/g, '').trim();
+  
+    if (NAO_E_BR.some(cidade => {
+      const cidadeNorm = cidade.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return textoLimpo === cidadeNorm || textoLimpo.startsWith(cidadeNorm + ' ');
+    })) {
+      return null;
+    }
+  
+    // 4️⃣ Busca parcial APENAS se a cidade for claramente brasileira
+    // (mínimo 6 letras, e a chave tem que ter pelo menos 6 letras também)
+    if (nome.length >= 6) {
+      for (const [key, uf] of Object.entries(CIDADES_BR)) {
+        const keyNorm = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (keyNorm.length >= 6) {
+          // Só faz match se for a MESMA palavra completa
+          const palavrasNome = nome.split(/\s+/);
+          const palavrasKey = keyNorm.split(/\s+/);
+          // Considera match só se o nome do input contém a chave EXATA como palavra
+          if (palavrasNome.includes(keyNorm)) {
+            return uf;
+          }
+        }
+      }
+    }
+  
+    return null;
   }
-
-  return null;
-}
-
-function decidirTransporte(origem, destino) {
-  const ufOrigem = getEstado(origem);
-  const ufDestino = getEstado(destino);
-
-  if (!ufOrigem || !ufDestino) {
-    return {
-      recomendado: 'both',
-      disponivel: { flight: true, bus: true },
-      motivo: 'Estados não identificados',
-      ufOrigem, ufDestino
-    };
-  }
-
-  if (ufOrigem === ufDestino) {
-    return {
-      recomendado: 'bus',
-      disponivel: { flight: false, bus: true },
-      motivo: `Mesmo estado (${ufOrigem})`,
-      ufOrigem, ufDestino
-    };
-  }
-
-  return {
-    recomendado: 'both',
-    disponivel: { flight: true, bus: true },
-    motivo: `Estados diferentes (${ufOrigem} → ${ufDestino})`,
-    ufOrigem, ufDestino
-  };
-}
-
-function destinoUFNome(uf) {
-  const map = {
-    "SP": "São Paulo", "RJ": "Rio de Janeiro", "MG": "Minas Gerais",
-    "ES": "Espírito Santo", "PR": "Paraná", "SC": "Santa Catarina",
-    "RS": "Rio Grande do Sul", "BA": "Bahia", "SE": "Sergipe",
-    "PE": "Pernambuco", "CE": "Ceará", "RN": "Rio Grande do Norte",
-    "PB": "Paraíba", "AL": "Alagoas", "MA": "Maranhão", "PI": "Piauí",
-    "TO": "Tocantins", "PA": "Pará", "AM": "Amazonas", "AC": "Acre",
-    "RO": "Rondônia", "RR": "Roraima", "AP": "Amapá", "MT": "Mato Grosso",
-    "MS": "Mato Grosso do Sul", "GO": "Goiás", "DF": "Distrito Federal"
-  };
-  return map[uf] || uf;
-}
 
 /* ============================================================
    ✅ VALORES REAIS DE ÔNIBUS (ida/volta)
