@@ -1,6 +1,6 @@
 /* ============================================================
    VIAGEN AI - SCRIPT COMPLETO
-   Modo único: POR NOITES
+   Modo único: POR NOITES (funcionando)
    Orçamento: VALOR TOTAL da viagem (transporte + hotel + passeios)
    ============================================================ */
 
@@ -147,9 +147,15 @@
      return diffDays > 0 ? diffDays : null;
    }
    
-   /* ✅ MODO ÚNICO: POR NOITES */
+   /* ============================================================
+      ✅ MODO ÚNICO: POR NOITES (versão robusta)
+      Lê o valor do <select id="nightsSelect"> corretamente
+      ============================================================ */
    function getSearchDates() {
-     const nights = parseInt(document.getElementById('nightsSelect')?.value) || 7;
+     const select = document.getElementById('nightsSelect');
+     const nights = select ? parseInt(select.value) : 7;
+     const nightsValidas = (isNaN(nights) || nights <= 0) ? 7 : nights;
+   
      const approxDate = document.getElementById('dateApproxInput')?.value || '';
    
      let dateStart = approxDate || '';
@@ -157,18 +163,20 @@
    
      if (approxDate) {
        const end = new Date(approxDate + 'T00:00:00');
-       end.setDate(end.getDate() + nights);
+       end.setDate(end.getDate() + nightsValidas);
        dateEnd = end.toISOString().split('T')[0];
      }
    
      return {
        date: dateStart,
        dateEnd: dateEnd,
-       nights: nights
+       nights: nightsValidas
      };
    }
    
-   /* ✅ ORÇAMENTO: retorna o VALOR BRUTO em R$ (0 = sem limite) */
+   /* ============================================================
+      ✅ ORÇAMENTO: retorna o VALOR BRUTO em R$ (0 = sem limite)
+      ============================================================ */
    function getBudgetRaw() {
      const input = document.getElementById('budgetInput');
      if (!input) return 0;
@@ -342,6 +350,8 @@
      const originText = getVal('originInput').trim();
      const budgetRaw = getBudgetRaw();
    
+     console.log(`🔍 Buscando... ${nights} noites | Orçamento: ${budgetRaw ? 'R$ ' + budgetRaw : 'sem limite'}`);
+   
      const cardsContainer = document.getElementById('cardsContainer');
      const resultCountSpan = document.getElementById('resultCount');
      const title = document.getElementById('resultsScreenTitle');
@@ -512,19 +522,37 @@
        const totalFlight = hasFlight ? dest.pricing.flight + hotelTotal + dest.pricing.tours : null;
        const totalBus = hasBus ? dest.pricing.bus + hotelTotal + dest.pricing.tours : null;
    
-       // 💰 Verifica se cabe no orçamento
+       // 💰 Verifica se cabe no orçamento TOTAL
        let avisoOrcamento = '';
        if (budgetRaw > 0) {
-         const melhorCusto = Math.min(
-           totalFlight !== null ? totalFlight : Infinity,
-           totalBus !== null ? totalBus : Infinity
-         );
-         if (melhorCusto <= budgetRaw) {
-           avisoOrcamento = `<div class="budget-ok"><i class="fas fa-check-circle"></i> Cabe no seu orçamento</div>`;
-         } else if (melhorCusto <= budgetRaw * 1.2) {
-           avisoOrcamento = `<div class="budget-quase"><i class="fas fa-exclamation-triangle"></i> Um pouco acima do orçamento</div>`;
-         } else {
-           avisoOrcamento = `<div class="budget-over"><i class="fas fa-times-circle"></i> Acima do seu orçamento</div>`;
+         const opcoes = [];
+         if (totalFlight !== null) opcoes.push({ tipo: 'avião', valor: totalFlight });
+         if (totalBus !== null) opcoes.push({ tipo: 'ônibus', valor: totalBus });
+   
+         if (opcoes.length > 0) {
+           const melhor = opcoes.reduce((min, o) => o.valor < min.valor ? o : min, opcoes[0]);
+           const diferenca = melhor.valor - budgetRaw;
+   
+           if (melhor.valor <= budgetRaw) {
+             const sobra = budgetRaw - melhor.valor;
+             avisoOrcamento = `
+               <div class="budget-ok">
+                 <i class="fas fa-check-circle"></i>
+                 Cabe no orçamento com ${melhor.tipo} (sobra R$ ${sobra.toLocaleString('pt-BR')})
+               </div>`;
+           } else if (melhor.valor <= budgetRaw * 1.2) {
+             avisoOrcamento = `
+               <div class="budget-quase">
+                 <i class="fas fa-exclamation-triangle"></i>
+                 Passa R$ ${diferenca.toLocaleString('pt-BR')} do orçamento
+               </div>`;
+           } else {
+             avisoOrcamento = `
+               <div class="budget-over">
+                 <i class="fas fa-times-circle"></i>
+                 Acima do orçamento (R$ ${diferenca.toLocaleString('pt-BR')} a mais)
+               </div>`;
+           }
          }
        }
    
@@ -566,12 +594,12 @@
                </div>
                ${totalFlight ? `
                <div class="price-row total">
-                 <span><i class="fas fa-plane"></i> Total com avião</span>
+                 <span><i class="fas fa-plane"></i> TOTAL com avião</span>
                  <strong>R$ ${totalFlight.toLocaleString('pt-BR')}</strong>
                </div>` : ''}
                ${totalBus ? `
                <div class="price-row total bus-total">
-                 <span><i class="fas fa-bus"></i> Total com ônibus</span>
+                 <span><i class="fas fa-bus"></i> TOTAL com ônibus</span>
                  <strong>R$ ${totalBus.toLocaleString('pt-BR')}</strong>
                </div>` : ''}
              </div>
@@ -1052,14 +1080,13 @@
      const budgetRaw = getBudgetRaw();
      const budget = getBudgetValue();
    
+     console.log(`🤖 IA roteiro | ${nights} noites | Orçamento: ${budgetRaw ? 'R$ ' + budgetRaw : 'sem limite'}`);
+   
      if (destinationText) {
-       console.log(`🎯 Destino específico: ${destinationText}`);
        return await generateLocalItinerary(dateValue, month, climate, destinationText, budget);
      }
    
      try {
-       console.log(`🤖 Pedindo recomendações para a IA... (orçamento: ${budgetRaw ? 'R$ ' + budgetRaw : 'sem limite'})`);
-   
        const excludeList = Array.from(sessionUsedDestinations);
    
        const response = await fetch(`${API_URL}/api/recommend-destinations`, {
@@ -1269,8 +1296,10 @@
    
        const hasFlight = dest.pricing.flight !== null && dest.pricing.flight !== undefined;
        const hasBus = dest.pricing.bus !== null && dest.pricing.bus !== undefined;
-       const destTotalFlight = hasFlight ? dest.pricing.flight + (dest.pricing.hotelPerNight * dest.idealDays) + dest.pricing.tours : null;
-       const destTotalBus = hasBus ? dest.pricing.bus + (dest.pricing.hotelPerNight * dest.idealDays) + dest.pricing.tours : null;
+       const hotelTotal = (dest.pricing.hotelPerNight || 0) * dest.idealDays;
+       const tours = dest.pricing.tours || 0;
+       const destTotalFlight = hasFlight ? dest.pricing.flight + hotelTotal + tours : null;
+       const destTotalBus = hasBus ? dest.pricing.bus + hotelTotal + tours : null;
    
        const dates = getBookingDates(dest.idealDays);
    
@@ -1300,14 +1329,20 @@
                <h5><i class="fas fa-list-check"></i> Roteiro dia a dia</h5>
                <div class="day-plan">${dayPlan}</div>
              </div>
+             <div style="background:#f1f5fc; border-radius:0.8rem; padding:0.6rem 1rem; font-size:0.82rem; color:#2f405c; display:flex; flex-direction:column; gap:0.3rem;">
+               ${hasFlight ? `<div><i class="fas fa-plane"></i> Voo: <strong>R$ ${dest.pricing.flight.toLocaleString('pt-BR')}</strong></div>` : ''}
+               ${hasBus ? `<div><i class="fas fa-bus"></i> Ônibus: <strong>R$ ${dest.pricing.bus.toLocaleString('pt-BR')}</strong></div>` : ''}
+               <div><i class="fas fa-hotel"></i> Hotel (${dest.idealDays}n): <strong>R$ ${hotelTotal.toLocaleString('pt-BR')}</strong></div>
+               <div><i class="fas fa-ticket"></i> Passeios: <strong>R$ ${tours.toLocaleString('pt-BR')}</strong></div>
+             </div>
              ${destTotalFlight !== null ? `
              <div class="timeline-price">
-               <span><i class="fas fa-plane"></i> Custo com avião</span>
+               <span><i class="fas fa-plane"></i> TOTAL com avião</span>
                <strong>R$ ${destTotalFlight.toLocaleString('pt-BR')}</strong>
              </div>` : ''}
              ${destTotalBus !== null ? `
              <div class="timeline-price" style="background:linear-gradient(135deg,#e8f5e0,#d4ecc4);">
-               <span><i class="fas fa-bus"></i> Custo com ônibus</span>
+               <span><i class="fas fa-bus"></i> TOTAL com ônibus</span>
                <strong style="color:#0d7a4a;">R$ ${destTotalBus.toLocaleString('pt-BR')}</strong>
              </div>` : ''}
              <div class="timeline-actions">
@@ -1334,12 +1369,12 @@
            </div>
            ${itinerary.totalFlight > 0 ? `
            <div class="timeline-price" style="background:white;margin-top:0.8rem;">
-             <span style="font-size:1rem;"><i class="fas fa-plane"></i> Total com avião</span>
+             <span style="font-size:1rem;"><i class="fas fa-plane"></i> TOTAL com avião</span>
              <strong style="font-size:1.6rem;">R$ ${itinerary.grandTotalFlight.toLocaleString('pt-BR')}</strong>
            </div>` : ''}
            ${itinerary.totalBus > 0 ? `
            <div class="timeline-price" style="background:white;margin-top:0.5rem;">
-             <span style="font-size:1rem;"><i class="fas fa-bus"></i> Total com ônibus</span>
+             <span style="font-size:1rem;"><i class="fas fa-bus"></i> TOTAL com ônibus</span>
              <strong style="font-size:1.6rem;color:#0d7a4a;">R$ ${itinerary.grandTotalBus.toLocaleString('pt-BR')}</strong>
            </div>` : ''}
          </div>
@@ -1454,14 +1489,14 @@
    
        ${totalFlight !== null ? `
        <div class="modal-total">
-         <span>Total com avião</span>
+         <span>TOTAL com avião</span>
          <strong>R$ ${totalFlight.toLocaleString('pt-BR')}</strong>
          <small>por pessoa</small>
        </div>` : ''}
    
        ${totalBus !== null ? `
        <div class="modal-total" style="background:linear-gradient(135deg,#e8f5e0,#d4ecc4);">
-         <span>Total com ônibus</span>
+         <span>TOTAL com ônibus</span>
          <strong style="color:#0d7a4a;">R$ ${totalBus.toLocaleString('pt-BR')}</strong>
          <small>por pessoa</small>
        </div>` : ''}
@@ -1522,19 +1557,27 @@
        });
      }
    
-     /* ✅ MODO ÚNICO: POR NOITES */
-     const nightsSelect = document.getElementById('nightsSelect');
-     const nightsTextMode = document.getElementById('nightsTextMode');
-   
+     /* ============================================================
+        ✅ MODO ÚNICO: POR NOITES (corrigido e robusto)
+        ============================================================ */
      function updateNightsModeBadge() {
-       const nights = nightsSelect?.value || 7;
-       const nightWord = nights == 1 ? 'noite' : 'noites';
-       if (nightsTextMode) nightsTextMode.textContent = `${nights} ${nightWord}`;
+       const select = document.getElementById('nightsSelect');
+       if (!select) return;
+   
+       const nights = parseInt(select.value) || 7;
+       const nightWord = nights === 1 ? 'noite' : 'noites';
+   
+       const badge = document.getElementById('nightsTextMode');
+       if (badge) badge.textContent = `${nights} ${nightWord}`;
+   
+       console.log(`🌙 Noites atualizado: ${nights}`);
      }
    
+     const nightsSelect = document.getElementById('nightsSelect');
      if (nightsSelect) {
        nightsSelect.addEventListener('change', updateNightsModeBadge);
-       updateNightsModeBadge();
+       nightsSelect.addEventListener('input', updateNightsModeBadge);
+       updateNightsModeBadge(); // força ao carregar
      }
    
      document.getElementById('aiBtn').addEventListener('click', runAISearch);
@@ -1608,4 +1651,4 @@
    window.closeModal = closeModal;
    window.resetSessionMemory = resetSessionMemory;
    
-   console.log('✅ ViaGen AI carregado! (orçamento = valor TOTAL da viagem)');
+   console.log('✅ ViaGen AI carregado! (noites + orçamento total)');

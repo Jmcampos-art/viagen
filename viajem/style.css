@@ -2131,3 +2131,42 @@ body {
   color: white;
   box-shadow: 0 4px 12px -4px #7b5cff60;
 }
+/* ==============================
+   AVISOS DE ORÇAMENTO
+   ============================== */
+   .budget-ok,
+   .budget-quase,
+   .budget-over {
+     padding: 0.7rem 1rem;
+     border-radius: 0.8rem;
+     font-size: 0.82rem;
+     font-weight: 600;
+     display: flex;
+     align-items: center;
+     gap: 0.5rem;
+     margin-top: 0.4rem;
+   }
+   
+   .budget-ok {
+     background: #d4f5e5;
+     color: #0d7a4a;
+     border-left: 3px solid #22b573;
+   }
+   
+   .budget-ok i { color: #0d7a4a; }
+   
+   .budget-quase {
+     background: #fff3cd;
+     color: #7a5b1a;
+     border-left: 3px solid #ffb300;
+   }
+   
+   .budget-quase i { color: #ffb300; }
+   
+   .budget-over {
+     background: #ffe0e0;
+     color: #a13030;
+     border-left: 3px solid #d94b4b;
+   }
+   
+   .budget-over i { color: #d94b4b; }
