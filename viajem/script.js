@@ -1,7 +1,8 @@
 /* ============================================================
    VIAGEN AI - SCRIPT COMPLETO
-   Modo único: POR NOITES (funcionando)
+   Modo único: POR NOITES
    Orçamento: VALOR TOTAL da viagem (transporte + hotel + passeios)
+   ✅ Roteiro distribui as noites entre os destinos
    ============================================================ */
 
    const API_URL = 'https://viagen.onrender.com';
@@ -148,8 +149,7 @@
    }
    
    /* ============================================================
-      ✅ MODO ÚNICO: POR NOITES (versão robusta)
-      Lê o valor do <select id="nightsSelect"> corretamente
+      ✅ MODO ÚNICO: POR NOITES
       ============================================================ */
    function getSearchDates() {
      const select = document.getElementById('nightsSelect');
@@ -174,9 +174,7 @@
      };
    }
    
-   /* ============================================================
-      ✅ ORÇAMENTO: retorna o VALOR BRUTO em R$ (0 = sem limite)
-      ============================================================ */
+   /* ✅ ORÇAMENTO: valor bruto em R$ */
    function getBudgetRaw() {
      const input = document.getElementById('budgetInput');
      if (!input) return 0;
@@ -184,7 +182,6 @@
      return (isNaN(value) || value <= 0) ? 0 : value;
    }
    
-   /* ✅ ORÇAMENTO: retorna a faixa (para prompts simples) */
    function getBudgetValue() {
      const value = getBudgetRaw();
      if (value === 0) return '';
@@ -194,13 +191,80 @@
      return 'luxo';
    }
    
-   /* ✅ CALCULA CUSTO TOTAL DE UM DESTINO */
+   /* ✅ CUSTO TOTAL DE UM DESTINO */
    function calcularCustoTotal(dest, nights, usarVoo = true) {
      const p = dest.pricing || {};
      const transporte = usarVoo ? (p.flight || 0) : (p.bus || 0);
      const hotel = (p.hotelPerNight || 0) * nights;
      const tours = p.tours || 0;
      return transporte + hotel + tours;
+   }
+   
+   /* ============================================================
+      ✅ DISTRIBUIR NOITES ENTRE OS DESTINOS
+      Ex: 7 noites + 3 destinos → [3, 2, 2]
+      ============================================================ */
+   function distribuirNoites(totalNoites, numDestinos) {
+     if (numDestinos <= 0) return [];
+     if (totalNoites <= 0) return Array(numDestinos).fill(3);
+   
+     const base = Math.floor(totalNoites / numDestinos);
+     const resto = totalNoites % numDestinos;
+   
+     const distribuicao = [];
+     for (let i = 0; i < numDestinos; i++) {
+       distribuicao.push(base + (i < resto ? 1 : 0));
+     }
+     return distribuicao;
+   }
+   
+   function ajustarDistribuicao(distribuicao, totalNoites) {
+     const ajustada = [...distribuicao];
+     let soma = ajustada.reduce((a, b) => a + b, 0);
+   
+     while (ajustada.some(n => n === 0) && soma < totalNoites) {
+       const idxMaior = ajustada.indexOf(Math.max(...ajustada));
+       if (ajustada[idxMaior] > 1) {
+         ajustada[idxMaior]--;
+         const idxZero = ajustada.indexOf(0);
+         ajustada[idxZero] = 1;
+         soma = ajustada.reduce((a, b) => a + b, 0);
+       } else {
+         break;
+       }
+     }
+   
+     return ajustada;
+   }
+   
+   /* ✅ Ajusta atividades para o número exato de dias */
+   function ajustarAtividades(activities, dias) {
+     const atividadesOriginais = activities || [];
+     const ajustadas = [];
+   
+     for (let dia = 1; dia <= dias; dia++) {
+       const original = atividadesOriginais.length > 0 
+         ? atividadesOriginais[(dia - 1) % atividadesOriginais.length]
+         : null;
+   
+       let titulo = `Dia ${dia}`;
+       let desc = 'Aproveite o dia livre.';
+   
+       if (original) {
+         titulo = original.title;
+         desc = original.desc;
+       } else if (dia === 1) {
+         titulo = 'Chegada';
+         desc = 'Check-in e primeiro passeio.';
+       } else if (dia === dias) {
+         titulo = 'Despedida';
+         desc = 'Últimas compras e retorno.';
+       }
+   
+       ajustadas.push({ day: dia, title: titulo, desc: desc });
+     }
+   
+     return ajustadas;
    }
    
    function getAirlineByCountry(country) {
@@ -229,7 +293,7 @@
    }
    
    function generateBookingUrl(offer, dest) {
-     const nights = dest?.idealDays || 3;
+     const nights = dest?.noitesDoDestino || dest?.idealDays || 3;
      const dates = getBookingDates(nights);
      const destQuery = encodeURIComponent(`${dest?.name || ''}, ${dest?.country || ''}`);
    
@@ -522,7 +586,6 @@
        const totalFlight = hasFlight ? dest.pricing.flight + hotelTotal + dest.pricing.tours : null;
        const totalBus = hasBus ? dest.pricing.bus + hotelTotal + dest.pricing.tours : null;
    
-       // 💰 Verifica se cabe no orçamento TOTAL
        let avisoOrcamento = '';
        if (budgetRaw > 0) {
          const opcoes = [];
@@ -683,7 +746,7 @@
        document.getElementById('packagesDestName').textContent = `${dest.name}${dest.state ? ', ' + dest.state : ''}`;
        document.getElementById('packagesCount').textContent = `${offers.length} ofertas`;
    
-       const nights = dest.idealDays;
+       const nights = dest.noitesDoDestino || dest.idealDays;
        const flightOffers = offers.filter(o => o.type === 'flight');
        const busOffers = offers.filter(o => o.type === 'bus');
        const hotelOffers = offers.filter(o => o.type === 'hotel');
@@ -714,7 +777,7 @@
    
    function generateOffers(dest) {
      const offers = [];
-     const nights = dest.idealDays;
+     const nights = dest.noitesDoDestino || dest.idealDays;
      let counter = 0;
    
      if (dest.pricing.flight !== null && dest.pricing.flight !== undefined) {
@@ -1066,7 +1129,9 @@
      document.body.style.overflow = 'hidden';
    }
    
-   /* ---------- IA - ROTEIRO ---------- */
+   /* ============================================================
+      ✅ IA - ROTEIRO (DISTRIBUI AS NOITES)
+      ============================================================ */
    async function aiGenerateItinerary() {
      const searchDates = getSearchDates();
      const dateValue = searchDates.date;
@@ -1101,7 +1166,7 @@
            climate: climate,
            budget: budget,
            budgetRaw: budgetRaw,
-           count: 4,
+           count: 3,
            exclude: excludeList
          })
        });
@@ -1116,8 +1181,24 @@
        const recommendationsFiltradas = recommendations.filter(r => !sessionUsedDestinations.has(r.name));
        const finalRecs = recommendationsFiltradas.length > 0 ? recommendationsFiltradas : recommendations;
    
-       const chosen = finalRecs.map((r) => {
+       // ⚠️ LIMITA a no máximo 3 destinos
+       const numDestinos = Math.min(finalRecs.length, 3);
+       const recsUsadas = finalRecs.slice(0, numDestinos);
+   
+       // ✅ DISTRIBUIR NOITES
+       let distribuicao = distribuirNoites(nights, numDestinos);
+       distribuicao = ajustarDistribuicao(distribuicao, nights);
+   
+       console.log(`📅 ${nights} noites → ${numDestinos} destinos: [${distribuicao.join(', ')}]`);
+   
+       const chosen = recsUsadas.map((r, idx) => {
          nextAIId++;
+         const noitesDoDestino = distribuicao[idx] || 2;
+         const diasDoDestino = noitesDoDestino;
+   
+         // ✅ Ajusta atividades para o número exato de dias
+         const atividadesAjustadas = ajustarAtividades(r.activities, diasDoDestino);
+   
          return {
            id: nextAIId,
            name: r.name || 'Destino',
@@ -1142,10 +1223,11 @@
            image: r.image || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1600&q=80',
            description: r.description || '',
            rating: r.rating || 8.5,
-           idealDays: nights || r.idealDays || 3,
+           idealDays: diasDoDestino,
+           noitesDoDestino: noitesDoDestino,
            tips: r.tips || '',
            whyRecommend: r.whyRecommend || '',
-           activities: r.activities || [],
+           activities: atividadesAjustadas,
            fromAI: true,
            origin: originText
          };
@@ -1158,21 +1240,25 @@
          }
        });
    
+       // ✅ RECALCULA valores com noites de CADA destino
        let totalDays = 0, totalFlight = 0, totalBus = 0, totalHotel = 0, totalTours = 0;
        chosen.forEach(d => {
-         totalDays += d.idealDays;
+         const n = d.noitesDoDestino || d.idealDays;
+         totalDays += n;
          totalFlight += d.pricing.flight || 0;
          totalBus += d.pricing.bus || 0;
-         totalHotel += d.pricing.hotelPerNight * d.idealDays;
+         totalHotel += d.pricing.hotelPerNight * n;
          totalTours += d.pricing.tours;
        });
    
        return {
          destinations: chosen,
-         totalDays, totalFlight, totalBus, totalHotel, totalTours,
+         totalDays,
+         totalFlight, totalBus, totalHotel, totalTours,
          grandTotalFlight: totalFlight + totalHotel + totalTours,
          grandTotalBus: totalBus + totalHotel + totalTours,
-         dateValue, dateEndValue, nights, month, climate, budget
+         dateValue, dateEndValue,
+         nights, month, climate, budget
        };
    
      } catch (error) {
@@ -1213,39 +1299,60 @@
    
      scored.sort((a, b) => b._score - a._score);
    
-     const numDestinos = Math.min(4, Math.max(3, pool.length));
+     const numDestinos = Math.min(3, Math.max(2, pool.length));
      const chosen = [];
      const usedClimates = new Set();
    
      for (const dest of scored) {
        if (chosen.length >= numDestinos) break;
        if (!usedClimates.has(dest.climate)) {
-         chosen.push({ ...dest, idealDays: nights || dest.idealDays });
+         chosen.push({ ...dest });
          usedClimates.add(dest.climate);
        }
      }
      for (const dest of scored) {
        if (chosen.length >= numDestinos) break;
-       if (!chosen.find(d => d.id === dest.id)) chosen.push({ ...dest, idealDays: nights || dest.idealDays });
+       if (!chosen.find(d => d.id === dest.id)) chosen.push({ ...dest });
      }
    
-     chosen.forEach(d => sessionUsedDestinations.add(d.name));
+     // ✅ DISTRIBUIR NOITES
+     let distribuicao = distribuirNoites(nights, chosen.length);
+     distribuicao = ajustarDistribuicao(distribuicao, nights);
+   
+     console.log(`📅 [Local] ${nights} noites → ${chosen.length} destinos: [${distribuicao.join(', ')}]`);
+   
+     const chosenComDias = chosen.map((d, idx) => {
+       const noitesDoDestino = distribuicao[idx] || 2;
+       const atividadesAjustadas = ajustarAtividades(d.activities, noitesDoDestino);
+   
+       return {
+         ...d,
+         idealDays: noitesDoDestino,
+         noitesDoDestino: noitesDoDestino,
+         activities: atividadesAjustadas
+       };
+     });
+   
+     chosenComDias.forEach(d => sessionUsedDestinations.add(d.name));
    
      let totalDays = 0, totalFlight = 0, totalBus = 0, totalHotel = 0, totalTours = 0;
-     chosen.forEach(d => {
-       totalDays += d.idealDays;
+     chosenComDias.forEach(d => {
+       const n = d.noitesDoDestino || d.idealDays;
+       totalDays += n;
        totalFlight += d.pricing.flight || 0;
        totalBus += d.pricing.bus || 0;
-       totalHotel += d.pricing.hotelPerNight * d.idealDays;
+       totalHotel += d.pricing.hotelPerNight * n;
        totalTours += d.pricing.tours;
      });
    
      return {
-       destinations: chosen,
-       totalDays, totalFlight, totalBus, totalHotel, totalTours,
+       destinations: chosenComDias,
+       totalDays,
+       totalFlight, totalBus, totalHotel, totalTours,
        grandTotalFlight: totalFlight + totalHotel + totalTours,
        grandTotalBus: totalBus + totalHotel + totalTours,
-       dateValue, dateEndValue: searchDates.dateEnd, nights, month, climate, budget
+       dateValue, dateEndValue: searchDates.dateEnd,
+       nights, month, climate, budget
      };
    }
    
@@ -1283,25 +1390,27 @@
      let cumulativeDay = 1;
    
      itinerary.destinations.forEach(dest => {
+       const noitesDestino = dest.noitesDoDestino || dest.idealDays;
+       const diasDestino = noitesDestino;
        const startDay = cumulativeDay;
-       const endDay = cumulativeDay + dest.idealDays - 1;
+       const endDay = cumulativeDay + diasDestino - 1;
    
-       const dayPlan = dest.activities.slice(0, dest.idealDays).map(act => `
+       const dayPlan = dest.activities.slice(0, diasDestino).map(act => `
          <div class="day-block">
            <i class="fas fa-circle-dot"></i>
-           <strong>Dia ${startDay + act.day - 1}:</strong> ${act.title}
+           <strong>Dia ${startDay + (act.day - 1)}:</strong> ${act.title}
            <div style="font-size:0.82rem;color:#6b7d98;margin-top:0.2rem;margin-left:1.2rem;">${act.desc}</div>
          </div>
        `).join('');
    
        const hasFlight = dest.pricing.flight !== null && dest.pricing.flight !== undefined;
        const hasBus = dest.pricing.bus !== null && dest.pricing.bus !== undefined;
-       const hotelTotal = (dest.pricing.hotelPerNight || 0) * dest.idealDays;
+       const hotelTotal = (dest.pricing.hotelPerNight || 0) * noitesDestino;
        const tours = dest.pricing.tours || 0;
        const destTotalFlight = hasFlight ? dest.pricing.flight + hotelTotal + tours : null;
        const destTotalBus = hasBus ? dest.pricing.bus + hotelTotal + tours : null;
    
-       const dates = getBookingDates(dest.idealDays);
+       const dates = getBookingDates(noitesDestino);
    
        const destQuery = encodeURIComponent(`${dest.name}, ${dest.country}`);
        const hotelsUrl = `https://www.booking.com/searchresults.pt-br.html?ss=${destQuery}&checkin=${dates.checkin}&checkout=${dates.checkout}&group_adults=2`;
@@ -1318,7 +1427,7 @@
              <div class="timeline-dest-name"><i class="fas fa-map-pin"></i> ${dest.name}${dest.state ? ', ' + dest.state : ', ' + dest.country}</div>
              <div class="timeline-meta">
                <span><i class="fas fa-sun"></i> ${dest.climateLabel}</span>
-               <span><i class="fas fa-clock"></i> ${dest.idealDays} dias</span>
+               <span><i class="fas fa-moon"></i> ${noitesDestino} ${noitesDestino === 1 ? 'noite' : 'noites'}</span>
                <span><i class="fas fa-star"></i> ${dest.rating}/10</span>
              </div>
              ${dest.whyRecommend ? `
@@ -1326,13 +1435,13 @@
                <i class="fas fa-wand-magic-sparkles"></i> ${dest.whyRecommend}
              </div>` : ''}
              <div class="timeline-activities">
-               <h5><i class="fas fa-list-check"></i> Roteiro dia a dia</h5>
+               <h5><i class="fas fa-list-check"></i> Roteiro dia a dia (${diasDestino} dias)</h5>
                <div class="day-plan">${dayPlan}</div>
              </div>
              <div style="background:#f1f5fc; border-radius:0.8rem; padding:0.6rem 1rem; font-size:0.82rem; color:#2f405c; display:flex; flex-direction:column; gap:0.3rem;">
                ${hasFlight ? `<div><i class="fas fa-plane"></i> Voo: <strong>R$ ${dest.pricing.flight.toLocaleString('pt-BR')}</strong></div>` : ''}
                ${hasBus ? `<div><i class="fas fa-bus"></i> Ônibus: <strong>R$ ${dest.pricing.bus.toLocaleString('pt-BR')}</strong></div>` : ''}
-               <div><i class="fas fa-hotel"></i> Hotel (${dest.idealDays}n): <strong>R$ ${hotelTotal.toLocaleString('pt-BR')}</strong></div>
+               <div><i class="fas fa-hotel"></i> Hotel (${noitesDestino}n): <strong>R$ ${hotelTotal.toLocaleString('pt-BR')}</strong></div>
                <div><i class="fas fa-ticket"></i> Passeios: <strong>R$ ${tours.toLocaleString('pt-BR')}</strong></div>
              </div>
              ${destTotalFlight !== null ? `
@@ -1354,7 +1463,7 @@
            </div>
          </div>
        `;
-       cumulativeDay += dest.idealDays;
+       cumulativeDay += diasDestino;
      });
    
      html += `
@@ -1439,7 +1548,7 @@
      if (!dest) { alert('Destino não encontrado.'); return; }
    
      const searchDates = getSearchDates();
-     const nights = searchDates.nights || dest.idealDays;
+     const nights = dest.noitesDoDestino || searchDates.nights || dest.idealDays;
    
      const hotelTotal = calculateHotelTotal(dest.pricing, nights);
      const hasFlight = dest.pricing.flight !== null && dest.pricing.flight !== undefined;
@@ -1557,9 +1666,7 @@
        });
      }
    
-     /* ============================================================
-        ✅ MODO ÚNICO: POR NOITES (corrigido e robusto)
-        ============================================================ */
+     /* ✅ MODO ÚNICO: POR NOITES */
      function updateNightsModeBadge() {
        const select = document.getElementById('nightsSelect');
        if (!select) return;
@@ -1577,7 +1684,7 @@
      if (nightsSelect) {
        nightsSelect.addEventListener('change', updateNightsModeBadge);
        nightsSelect.addEventListener('input', updateNightsModeBadge);
-       updateNightsModeBadge(); // força ao carregar
+       updateNightsModeBadge();
      }
    
      document.getElementById('aiBtn').addEventListener('click', runAISearch);
@@ -1588,7 +1695,6 @@
      document.getElementById('backFromPackages').addEventListener('click', () => showScreen('resultsScreen'));
      document.getElementById('backFromItinerary').addEventListener('click', () => showScreen(null));
    
-     // ✅ Botão de trocar origem ↔ destino
      const swapBtn = document.getElementById('swapBtn');
      const originInput = document.getElementById('originInput');
      const destinationInput = document.getElementById('destinationInput');
@@ -1651,4 +1757,4 @@
    window.closeModal = closeModal;
    window.resetSessionMemory = resetSessionMemory;
    
-   console.log('✅ ViaGen AI carregado! (noites + orçamento total)');
+   console.log('✅ ViaGen AI carregado! (noites distribuídas + orçamento total)');

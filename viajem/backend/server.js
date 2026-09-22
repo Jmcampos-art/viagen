@@ -87,7 +87,7 @@ async function buscarImagemCidade(nomeCidade, pontoTuristico = '') {
 }
 
 /* ============================================================
-   BANCO DE CIDADES BRASILEIRAS (para decidir transporte)
+   BANCO DE CIDADES BRASILEIRAS
    ============================================================ */
 const CIDADES_BR = {
   "sao paulo": "SP", "são paulo": "SP", "botucatu": "SP", "itu": "SP", "santos": "SP",
@@ -297,17 +297,143 @@ function destinoUFNome(uf) {
 }
 
 /* ============================================================
+   ✅ VALORES REAIS DE ÔNIBUS POR DISTÂNCIA / PAÍS
+   ============================================================ */
+
+/* Países que exigem ônibus internacional (caro) */
+const PAISES_INTERNACIONAIS = [
+  'argentina', 'chile', 'uruguai', 'paraguai', 'peru', 'bolivia',
+  'equador', 'colombia', 'venezuela', 'guiana', 'suriname', 'guiana francesa'
+];
+
+/* Tabela de preços reais de ônibus (ida/volta) */
+const TABELA_ONIBUS = {
+  // Mesmo estado
+  mesmo_estado: { min: 60, max: 180 },
+  // Estados vizinhos/regiões próximas
+  curta_distancia: { min: 150, max: 350 },   // < 500km
+  // Distâncias médias
+  media_distancia: { min: 300, max: 600 },   // 500–1500km
+  // Longas distâncias nacionais
+  longa_distancia: { min: 500, max: 900 },   // > 1500km
+  // Internacional (Argentina, Chile, Uruguai)
+  internacional: { min: 600, max: 1200 }
+};
+
+/**
+ * ✅ Detecta se o destino é internacional
+ */
+function isDestinoInternacional(paisOuNome) {
+  if (!paisOuNome) return false;
+  const texto = paisOuNome.toLowerCase();
+  return PAISES_INTERNACIONAIS.some(p => texto.includes(p));
+}
+
+/**
+ * ✅ Retorna o preço REAL do ônibus (ida/volta) baseado na rota
+ */
+function calcularPrecoOnibusReal(origem, destino, paisDestino = '') {
+  // 1️⃣ Se for internacional → faixa alta
+  if (isDestinoInternacional(paisDestino) || isDestinoInternacional(destino)) {
+    const min = TABELA_ONIBUS.internacional.min;
+    const max = TABELA_ONIBUS.internacional.max;
+    return Math.round(min + Math.random() * (max - min));
+  }
+
+  const ufOrigem = getEstado(origem);
+  const ufDestino = getEstado(destino);
+
+  // 2️⃣ Mesmo estado → mais barato
+  if (ufOrigem && ufDestino && ufOrigem === ufDestino) {
+    const min = TABELA_ONIBUS.mesmo_estado.min;
+    const max = TABELA_ONIBUS.mesmo_estado.max;
+    return Math.round(min + Math.random() * (max - min));
+  }
+
+  // 3️⃣ Regiões próximas (SP ↔ RJ, SP ↔ MG, SP ↔ PR, etc)
+  const regioesProximas = {
+    'SP': ['RJ', 'MG', 'PR', 'MS'],
+    'RJ': ['SP', 'MG', 'ES'],
+    'MG': ['SP', 'RJ', 'ES', 'GO', 'DF', 'BA'],
+    'ES': ['RJ', 'MG', 'BA'],
+    'PR': ['SP', 'SC', 'MS'],
+    'SC': ['PR', 'RS'],
+    'RS': ['SC'],
+    'BA': ['SE', 'PE', 'MG', 'GO', 'TO', 'PI'],
+    'SE': ['BA', 'AL', 'PE'],
+    'PE': ['SE', 'AL', 'PB', 'CE', 'PI', 'BA'],
+    'AL': ['SE', 'PE', 'BA'],
+    'PB': ['PE', 'RN', 'CE'],
+    'RN': ['PB', 'CE'],
+    'CE': ['RN', 'PB', 'PE', 'PI'],
+    'PI': ['CE', 'PE', 'BA', 'MA', 'TO'],
+    'MA': ['PI', 'TO', 'PA'],
+    'TO': ['MA', 'PI', 'BA', 'GO', 'PA', 'MT'],
+    'PA': ['MA', 'TO', 'AM', 'MT', 'AP', 'RR'],
+    'AM': ['PA', 'RO', 'AC', 'RR'],
+    'AC': ['AM', 'RO'],
+    'RO': ['AM', 'AC', 'MT'],
+    'RR': ['AM', 'PA'],
+    'AP': ['PA'],
+    'MT': ['MS', 'GO', 'TO', 'PA', 'RO'],
+    'MS': ['MT', 'GO', 'SP', 'PR'],
+    'GO': ['DF', 'MT', 'MS', 'MG', 'BA', 'TO'],
+    'DF': ['GO', 'MG']
+  };
+
+  if (ufOrigem && ufDestino && regioesProximas[ufOrigem]?.includes(ufDestino)) {
+    const min = TABELA_ONIBUS.curta_distancia.min;
+    const max = TABELA_ONIBUS.curta_distancia.max;
+    return Math.round(min + Math.random() * (max - min));
+  }
+
+  // 4️⃣ Longa distância (regiões distantes: SP ↔ Nordeste, Sul ↔ Norte)
+  const regioesDistantes = [
+    ['SP', 'BA'], ['SP', 'PE'], ['SP', 'CE'], ['SP', 'AM'], ['SP', 'PA'],
+    ['RJ', 'BA'], ['RJ', 'PE'], ['RJ', 'CE'], ['RJ', 'AM'], ['RJ', 'PA'],
+    ['MG', 'CE'], ['MG', 'AM'], ['MG', 'PA'], ['MG', 'PE'],
+    ['RS', 'BA'], ['RS', 'PE'], ['RS', 'CE'], ['RS', 'AM'], ['RS', 'PA'],
+    ['SC', 'BA'], ['SC', 'PE'], ['SC', 'CE'], ['SC', 'AM'], ['SC', 'PA'],
+    ['PR', 'BA'], ['PR', 'PE'], ['PR', 'CE'], ['PR', 'AM'], ['PR', 'PA']
+  ];
+
+  const par = [ufOrigem, ufDestino];
+  const ehDistante = regioesDistantes.some(([a, b]) =>
+    (par[0] === a && par[1] === b) || (par[0] === b && par[1] === a)
+  );
+
+  if (ehDistante) {
+    const min = TABELA_ONIBUS.longa_distancia.min;
+    const max = TABELA_ONIBUS.longa_distancia.max;
+    return Math.round(min + Math.random() * (max - min));
+  }
+
+  // 5️⃣ Fallback: distância média
+  const min = TABELA_ONIBUS.media_distancia.min;
+  const max = TABELA_ONIBUS.media_distancia.max;
+  return Math.round(min + Math.random() * (max - min));
+}
+
+/* ============================================================
    💰 CÁLCULO DE CUSTO TOTAL E FILTRO POR ORÇAMENTO
    ============================================================ */
 
 /**
  * Custo total = (voo OU ônibus) + (hotel × noites) + passeios
  */
-function calcularCustoTotal(dest, nights = 4, usarVoo = true) {
+function calcularCustoTotal(dest, nights = 4, usarVoo = true, origem = '') {
   const pricing = dest.pricing || {};
-  const transporte = usarVoo
-    ? (pricing.flight || 0)
-    : (pricing.bus || 0);
+  let transporte = usarVoo ? (pricing.flight || 0) : (pricing.bus || 0);
+
+  // ✅ Se é ônibus, usa o preço REAL baseado na rota
+  if (!usarVoo && origem) {
+    transporte = calcularPrecoOnibusReal(
+      origem,
+      dest.name || '',
+      dest.country || ''
+    );
+  }
+
   const hotel = (pricing.hotelPerNight || 0) * nights;
   const tours = pricing.tours || 0;
   return transporte + hotel + tours;
@@ -315,19 +441,16 @@ function calcularCustoTotal(dest, nights = 4, usarVoo = true) {
 
 /**
  * Filtra e ordena destinos pelo orçamento TOTAL
- * - Aceita até 20% acima do orçamento (tolerância)
- * - Se nada couber, pega os 3 mais baratos
- * - Sempre ordena do mais barato pro mais caro
  */
-function filtrarPorOrcamento(destinos, budgetRaw, nights = 4) {
+function filtrarPorOrcamento(destinos, budgetRaw, nights = 4, origem = '') {
   if (!budgetRaw || budgetRaw <= 0) {
     return destinos.map(d => ({
       ...d,
       cabeNoOrcamento: true,
       cabeComVoo: true,
       cabeComOnibus: true,
-      custoVoo: calcularCustoTotal(d, nights, true),
-      custoOnibus: calcularCustoTotal(d, nights, false)
+      custoVoo: calcularCustoTotal(d, nights, true, origem),
+      custoOnibus: calcularCustoTotal(d, nights, false, origem)
     }));
   }
 
@@ -335,8 +458,8 @@ function filtrarPorOrcamento(destinos, budgetRaw, nights = 4) {
   const limite = budgetRaw * TOLERANCIA;
 
   const comCusto = destinos.map(d => {
-    const custoVoo = calcularCustoTotal(d, nights, true);
-    const custoOnibus = calcularCustoTotal(d, nights, false);
+    const custoVoo = calcularCustoTotal(d, nights, true, origem);
+    const custoOnibus = calcularCustoTotal(d, nights, false, origem);
     const melhorCusto = Math.min(
       custoVoo > 0 ? custoVoo : Infinity,
       custoOnibus > 0 ? custoOnibus : Infinity
@@ -364,9 +487,9 @@ function filtrarPorOrcamento(destinos, budgetRaw, nights = 4) {
   return filtrados;
 }
 
-/**
- * Valida duplicatas e completa com catálogo se faltar
- */
+/* ============================================================
+   ✅ Validação e preenchimento com catálogo
+   ============================================================ */
 function validarECompletarRecomendacoes(recommendations, exclude, count, nights = 4) {
   const jaUsadosSet = new Set((exclude || []).map(n => n.toLowerCase().trim()));
   const unicos = [];
@@ -506,7 +629,8 @@ app.get('/', (req, res) => {
     cidadesBR: Object.keys(CIDADES_BR).length,
     paises: getPaisesDisponiveis().length,
     imagensCache: imageCache.size,
-    orcamento: 'O valor passado é o TOTAL da viagem (transporte + hotel + passeios)'
+    orcamento: 'Valor TOTAL (transporte + hotel + passeios)',
+    precosOnibus: 'Valores reais por região/país'
   });
 });
 
@@ -551,6 +675,25 @@ app.get('/test-cidades', (req, res) => {
   });
 });
 
+/* 🧪 NOVA ROTA: Testar preços reais de ônibus */
+app.get('/test-onibus', (req, res) => {
+  const origem = req.query.origem || 'Botucatu';
+  const destino = req.query.destino || 'Buenos Aires';
+  const pais = req.query.pais || 'Argentina';
+
+  const preco = calcularPrecoOnibusReal(origem, destino, pais);
+
+  res.json({
+    origem,
+    destino,
+    pais,
+    precoOnibusIdaVolta: `R$ ${preco.toLocaleString('pt-BR')}`,
+    internacional: isDestinoInternacional(pais) || isDestinoInternacional(destino),
+    ufOrigem: getEstado(origem),
+    ufDestino: getEstado(destino)
+  });
+});
+
 /* ============================================================
    ROTA: /api/search-destination
    ============================================================ */
@@ -573,7 +716,6 @@ app.post('/api/search-destination', async (req, res) => {
 ⚠️ REGRA DE TRANSPORTE:
 - Origem e destino estão no MESMO ESTADO (${transporte.ufOrigem})
 - APENAS ÔNIBUS. Defina "pricing.flight": null, "pricing.bus": valor
-- "transport.recommended": "bus", "transport.flightAvailable": false
 `;
     } else if (transporte.ufOrigem && transporte.ufDestino) {
       instrucaoTransporte = `
@@ -585,15 +727,23 @@ app.post('/api/search-destination', async (req, res) => {
       instrucaoTransporte = `⚠️ Estados não identificados - use ambos os transportes.`;
     }
 
+    // ✅ VALORES REAIS DE ÔNIBUS
+    const instrucaoOnibus = `
+⚠️ PREÇOS REAIS DE ÔNIBUS (ida/volta) — USE ESTES VALORES:
+- Mesmo estado: R$ 60–180
+- Estados vizinhos (<500km): R$ 150–350
+- Distância média (500–1500km): R$ 300–600
+- Longa distância (>1500km, ex: SP→Nordeste): R$ 500–900
+- INTERNACIONAL (Argentina/Chile/Uruguai): R$ 600–1200 (NUNCA menos que 600!)
+- Exemplos reais: SP→Buenos Aires R$ 700, SP→Santiago R$ 850, SP→Rio R$ 100–150
+`;
+
     let instrucaoOrcamento = '';
     if (orcamento > 0) {
       instrucaoOrcamento = `
-⚠️⚠️⚠️ REGRA DE ORÇAMENTO TOTAL:
-- O viajante tem R$ ${orcamento.toLocaleString('pt-BR')} NO TOTAL (transporte + hotel + passeios)
-- Para ${noites} noites, o custo TOTAL deve ser ≤ R$ ${orcamento.toLocaleString('pt-BR')}
-- Cálculo: (voo OU ônibus) + (hotel × ${noites}) + passeios
-- Ajuste os preços REALISTAS para caber nesse orçamento
-- Se não couber, prefira ônibus ou valores menores
+⚠️ REGRA DE ORÇAMENTO TOTAL:
+- R$ ${orcamento.toLocaleString('pt-BR')} NO TOTAL (transporte + hotel + passeios)
+- Para ${noites} noites, o custo TOTAL ≤ R$ ${orcamento.toLocaleString('pt-BR')}
 `;
     }
 
@@ -608,6 +758,7 @@ DADOS:
 - Orçamento TOTAL: ${orcamento > 0 ? 'R$ ' + orcamento.toLocaleString('pt-BR') : 'Sem restrição'}
 
 ${instrucaoTransporte}
+${instrucaoOnibus}
 ${instrucaoOrcamento}
 
 ⚠️ REGRAS SOBRE ATRAÇÕES (NÃO INVENTE):
@@ -668,11 +819,20 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
     if (!transporte.disponivel.bus) destination.pricing.bus = null;
     destination.state = destinoUFNome(transporte.ufDestino) || destination.state;
 
+    // ✅ AJUSTA o preço do ônibus com base real
+    if (destination.pricing.bus !== null && destination.pricing.bus !== undefined) {
+      destination.pricing.bus = calcularPrecoOnibusReal(
+        origin,
+        destination.name,
+        destination.country
+      );
+    }
+
     const primeiroPonto = destination.attractions?.[0] || '';
     const imagemReal = await buscarImagemCidade(destination.name, primeiroPonto);
     destination.image = imagemReal;
 
-    console.log(`✅ ${destination.name} | Imagem: ${imagemReal.substring(0, 70)}...`);
+    console.log(`✅ ${destination.name} | Ônibus: R$ ${destination.pricing.bus} | Imagem ok`);
     res.json(destination);
   } catch (error) {
     console.error('❌ Erro IA:', error);
@@ -682,7 +842,6 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
 
 /* ============================================================
    ROTA: /api/recommend-destinations
-   Orçamento é o TOTAL da viagem
    ============================================================ */
 app.post('/api/recommend-destinations', async (req, res) => {
   try {
@@ -691,18 +850,14 @@ app.post('/api/recommend-destinations', async (req, res) => {
     const orcamento = parseInt(budgetRaw) || 0;
     const noites = parseInt(nights) || 4;
 
-    console.log(`🤖 IA recomendando ${total} destinos | Origem: ${origin || '?'} | Orçamento TOTAL: ${orcamento ? 'R$ ' + orcamento : 'sem limite'} | ${noites} noites`);
+    console.log(`🤖 IA recomendando ${total} destinos | Origem: ${origin || '?'} | Orçamento: ${orcamento ? 'R$ ' + orcamento : 'sem limite'} | ${noites} noites`);
 
     let instrucaoOrcamento = '';
     if (orcamento > 0) {
       instrucaoOrcamento = `
-⚠️⚠️⚠️ REGRA DE ORÇAMENTO TOTAL (MUITO IMPORTANTE):
-- O viajante tem R$ ${orcamento.toLocaleString('pt-BR')} NO TOTAL
+⚠️ ORÇAMENTO TOTAL: R$ ${orcamento.toLocaleString('pt-BR')}
 - Isso inclui: (voo OU ônibus) + (hotel × ${noites} noites) + passeios
-- Cada destino sugerido DEVE caber nesse valor
-- Se o voo não couber, use ônibus
-- Se ainda não couber, escolha destino mais próximo/barato
-- NUNCA sugira destinos cujo custo total ultrapasse R$ ${orcamento.toLocaleString('pt-BR')}
+- Cada destino DEVE caber nesse valor total
 `;
     }
 
@@ -725,10 +880,22 @@ ${exclude.map(n => `- ${n}`).join('\n')}
 
 REGRAS OBRIGATÓRIAS:
 1. Destinos REAIS que existem
-2. CADA destino em um PAÍS DIFERENTE (não repita!)
+2. CADA destino em um PAÍS DIFERENTE
 3. NÃO repita cidades
-4. Considere o orçamento TOTAL
-5. Preços realistas em R$
+4. Preços realistas em R$
+
+⚠️⚠️⚠️ PREÇOS REAIS DE ÔNIBUS (ida/volta) — USE SEMPRE:
+- Mesmo estado: R$ 60–180
+- Estados vizinhos (<500km): R$ 150–350
+- Distância média (500–1500km): R$ 300–600
+- Longa distância nacional (>1500km): R$ 500–900
+- INTERNACIONAL (Argentina, Chile, Uruguai): R$ 600–1200
+- Exemplos: SP→Buenos Aires R$ 700 | SP→Santiago R$ 850 | SP→Rio R$ 100–150
+- Se origem for cidade pequena (Botucatu, etc), some o trecho até SP
+
+⚠️ REGRAS DE PAÍS:
+- Se for fora do Brasil, "bus" NUNCA pode ser < R$ 600
+- Se for fora do Brasil e longe (Europa, EUA, Ásia), "bus": null
 
 FORMATO (JSON puro):
 {
@@ -741,7 +908,7 @@ FORMATO (JSON puro):
       "climate": "ameno",
       "climateLabel": "Ameno",
       "bestMonths": [1,2,3,4,5,6,7,8,9,10,11,12],
-      "pricing": { "flight": 1200, "bus": 250, "hotelPerNight": 350, "tours": 400 },
+      "pricing": { "flight": 1200, "bus": 700, "hotelPerNight": 350, "tours": 400 },
       "transport": { "recommended": "both", "flightAvailable": true, "busAvailable": true },
       "attractions": ["Atração 1", "Atração 2", "Atração 3", "Atração 4"],
       "description": "Descrição curta",
@@ -759,20 +926,13 @@ FORMATO (JSON puro):
   ]
 }
 
-⚠️ SOBRE PREÇOS:
-- Voo: distância de ${origin || 'São Paulo'}
-- Mesmo estado: "flight": null
-- Muito longe (>1500km): "bus": null
-- CUSTO TOTAL = (voo OU ônibus) + (hotel × ${noites}) + passeios
-${orcamento > 0 ? `- CUSTO TOTAL ≤ R$ ${orcamento.toLocaleString('pt-BR')}` : ''}
-
 O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
 `;
 
     const completion = await groq.chat.completions.create({
       model: "openai/gpt-oss-120b",
       messages: [
-        { role: "system", content: "Você é um especialista em viagens que SEMPRE recomenda destinos REAIS, nunca repete países e SEMPRE respeita o orçamento total. Responda APENAS em JSON válido." },
+        { role: "system", content: "Você é um especialista em viagens que SEMPRE recomenda destinos REAIS, nunca repete países e SEMPRE usa preços REALISTAS de ônibus (mínimo R$ 600 para internacional). Responda APENAS em JSON válido." },
         { role: "user", content: prompt }
       ],
       response_format: { type: "json_object" },
@@ -785,9 +945,20 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
 
     const data = JSON.parse(text);
     const recommendations = data.recommendations || [];
-    console.log(`✅ IA recomendou ${recommendations.length} destinos. Validando...`);
+    console.log(`✅ IA recomendou ${recommendations.length} destinos. Corrigindo preços...`);
 
-    // Valida duplicatas (pega mais para depois filtrar por orçamento)
+    // ✅ CORRIGE o preço do ônibus em cada recomendação
+    recommendations.forEach(rec => {
+      if (rec.pricing && rec.pricing.bus !== null && rec.pricing.bus !== undefined) {
+        rec.pricing.bus = calcularPrecoOnibusReal(
+          origin,
+          rec.name,
+          rec.country
+        );
+      }
+    });
+
+    // Valida duplicatas
     let recomendacoesValidadas = validarECompletarRecomendacoes(
       recommendations,
       exclude,
@@ -795,13 +966,11 @@ O campo "climate" DEVE ser: "calor", "frio", "ameno", "tropical" ou "seco"
       noites
     );
 
-    // Filtra por orçamento TOTAL
-    recomendacoesValidadas = filtrarPorOrcamento(recomendacoesValidadas, orcamento, noites);
-
-    // Pega só os N melhores
+    // Filtra por orçamento
+    recomendacoesValidadas = filtrarPorOrcamento(recomendacoesValidadas, orcamento, noites, origin);
     recomendacoesValidadas = recomendacoesValidadas.slice(0, total);
 
-    console.log(`✅ ${recomendacoesValidadas.length} destinos válidos no orçamento. Buscando imagens...`);
+    console.log(`✅ ${recomendacoesValidadas.length} destinos válidos. Buscando imagens...`);
 
     const recommendationsComImagens = await Promise.all(
       recomendacoesValidadas.map(async (rec) => {
@@ -843,16 +1012,7 @@ app.post('/api/generate-by-climate', async (req, res) => {
 
     const climaTexto = climateMap[climate] || climate;
 
-    console.log(`🌡️ IA gerando ${total} destinos de clima "${climate}" | Orçamento: ${orcamento ? 'R$ ' + orcamento : 'sem limite'}`);
-
-    let instrucaoOrcamento = '';
-    if (orcamento > 0) {
-      instrucaoOrcamento = `
-⚠️ ORÇAMENTO TOTAL: R$ ${orcamento.toLocaleString('pt-BR')} para ${noites} noites
-- Custo TOTAL = (voo OU ônibus) + (hotel × ${noites}) + passeios
-- Ajuste os preços para CABER nesse valor
-`;
-    }
+    console.log(`🌡️ IA gerando ${total} destinos de clima "${climate}"`);
 
     const prompt = `
 Você é um especialista em viagens. Gere ${total} destinos de viagem com o CLIMA:
@@ -861,19 +1021,18 @@ Você é um especialista em viagens. Gere ${total} destinos de viagem com o CLIM
 - Saindo de: ${origin || 'Não informado (assuma São Paulo)'}
 - Noites: ${noites}
 
-${instrucaoOrcamento}
-
 REGRAS:
 1. TODOS os destinos DEVEM ter esse clima (${climate})
-2. CADA destino em PAÍS ou ESTADO DIFERENTE (não repita!)
-3. NUNCA invente cidades — use destinos REAIS
+2. CADA destino em PAÍS ou ESTADO DIFERENTE
+3. NUNCA invente cidades
 
-Exemplos para "${climate}":
-- calor: Cancún, Miami, Natal, Maceió, Jericoacoara, Rio, Salvador, Fortaleza
-- frio: Gramado, Canela, Campos do Jordão, Ushuaia, Bariloche, Reykjavik
-- tropical: Bali, Fernando de Noronha, Bonito, Chapada dos Guimarães
-- ameno: Lisboa, Paris, Roma, Santiago, Buenos Aires
-- seco: Cairo, Dubai, Marrakech, Atacama, Chapada Diamantina
+⚠️ PREÇOS REAIS DE ÔNIBUS (ida/volta):
+- Mesmo estado: R$ 60–180
+- Estados vizinhos: R$ 150–350
+- Distância média: R$ 300–600
+- Longa distância: R$ 500–900
+- INTERNACIONAL (Argentina, Chile, Uruguai): R$ 600–1200
+- Exemplos reais: SP→Buenos Aires R$ 700 | SP→Santiago R$ 850
 
 FORMATO (JSON puro):
 {
@@ -886,7 +1045,7 @@ FORMATO (JSON puro):
       "climate": "${climate}",
       "climateLabel": "Ex: Quente / Tropical",
       "bestMonths": [1,2,3,4,5,6,7,8,9,10,11,12],
-      "pricing": { "flight": 1200, "bus": 250, "hotelPerNight": 350, "tours": 400 },
+      "pricing": { "flight": 1200, "bus": 700, "hotelPerNight": 350, "tours": 400 },
       "transport": { "recommended": "both", "flightAvailable": true, "busAvailable": true },
       "attractions": ["Atração 1", "Atração 2", "Atração 3", "Atração 4"],
       "description": "Descrição curta",
@@ -909,7 +1068,7 @@ O campo "climate" DEVE ser exatamente: "${climate}"
     const completion = await groq.chat.completions.create({
       model: "openai/gpt-oss-120b",
       messages: [
-        { role: "system", content: "Você é um especialista em viagens que SEMPRE gera destinos REAIS com o clima correto e SEMPRE respeita o orçamento. Responda APENAS em JSON válido." },
+        { role: "system", content: "Você é um especialista em viagens que SEMPRE gera destinos REAIS com o clima correto e preços REALISTAS (nunca menos de R$ 600 para ônibus internacional). Responda APENAS em JSON válido." },
         { role: "user", content: prompt }
       ],
       response_format: { type: "json_object" },
@@ -922,10 +1081,21 @@ O campo "climate" DEVE ser exatamente: "${climate}"
 
     const data = JSON.parse(text);
     const generated = data.destinations || [];
-    console.log(`✅ IA gerou ${generated.length} destinos. Validando...`);
+    console.log(`✅ IA gerou ${generated.length} destinos. Corrigindo preços...`);
+
+    // ✅ CORRIGE preço do ônibus
+    generated.forEach(dest => {
+      if (dest.pricing && dest.pricing.bus !== null && dest.pricing.bus !== undefined) {
+        dest.pricing.bus = calcularPrecoOnibusReal(
+          origin,
+          dest.name,
+          dest.country
+        );
+      }
+    });
 
     let destinosValidados = validarECompletarPorClima(generated, climate, total * 2, noites);
-    destinosValidados = filtrarPorOrcamento(destinosValidados, orcamento, noites).slice(0, total);
+    destinosValidados = filtrarPorOrcamento(destinosValidados, orcamento, noites, origin).slice(0, total);
 
     console.log(`✅ ${destinosValidados.length} destinos válidos. Buscando imagens...`);
 
@@ -1009,6 +1179,6 @@ app.listen(PORT, () => {
   console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
   console.log(`🗺️  Cidades BR: ${Object.keys(CIDADES_BR).length}`);
   console.log(`🌍 Países: ${getPaisesDisponiveis().length}`);
-  console.log(`💰 Orçamento = VALOR TOTAL (transporte + hotel + passeios)`);
-  console.log(`🧪 Teste: GET /test-cidades?pais=Brasil&qtd=10`);
+  console.log(`🚌 Preços REAIS de ônibus por região/país`);
+  console.log(`🧪 Teste: GET /test-onibus?origem=Botucatu&destino=Buenos Aires&pais=Argentina`);
 });
