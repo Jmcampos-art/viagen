@@ -4,8 +4,23 @@
 
 const API_URL_COMPRA = window.API_URL || 'http://localhost:3000';
 
-// 📱 NÚMERO DO WHATSAPP DA AGÊNCIA (troque pelo real)
-const WHATSAPP_AGENCIA = '5514999999999'; // formato: 55 + DDD + número
+/* ============================================================
+   📱 NÚMEROS DE WHATSAPP PARA COMPRA
+   ============================================================ */
+const WHATSAPP_NUMEROS = [
+  {
+    id: 'gabriela',
+    nome: 'Gabriela Bastos',
+    cargo: 'Vendedora',
+    numero: '5514998126327' // ← troque pelo número real
+  },
+  {
+    id: 'hiago',
+    nome: 'Hiago Lippi',
+    cargo: 'Vendedor',
+    numero: '55149997727274' // ← troque pelo número real
+  }
+];
 
 /* ============================================================
    MÁSCARAS
