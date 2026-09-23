@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrar · ViaGen</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="config.js"></script>
+</head>
+<body>
+
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <i class="fas fa-map-marked-alt"></i> Via<span>Gen</span>
+    </div>
+    <h1 class="auth-title">Bem-vindo de volta</h1>
+    <p class="auth-sub">Entre para salvar suas viagens favoritas</p>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+      <button class="auth-tab" data-tab="registrar"><i class="fas fa-user-plus"></i> Criar conta</button>
+    </div>
+
+    <form id="formLogin" class="auth-form">
+      <div class="auth-field">
+        <label><i class="fas fa-envelope"></i> E-mail</label>
+        <input type="email" id="loginEmail" placeholder="seu@email.com" required>
+      </div>
+      <div class="auth-field">
+        <label><i class="fas fa-lock"></i> Senha</label>
+        <div class="password-wrapper">
+          <input type="password" id="loginSenha" placeholder="Sua senha" required>
+          <button type="button" class="toggle-password" onclick="toggleSenha('loginSenha', this)">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="auth-submit"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+    </form>
+
+    <form id="formRegistrar" class="auth-form" style="display:none;">
+      <div class="auth-field">
+        <label><i class="fas fa-user"></i> Nome completo</label>
+        <input type="text" id="regNome" placeholder="Seu nome" required minlength="3">
+      </div>
+      <div class="auth-field">
+        <label><i class="fas fa-envelope"></i> E-mail</label>
+        <input type="email" id="regEmail" placeholder="seu@email.com" required>
+      </div>
+      <div class="auth-field">
+        <label><i class="fas fa-lock"></i> Senha</label>
+        <div class="password-wrapper">
+          <input type="password" id="regSenha" placeholder="Mínimo 6 caracteres" required minlength="6">
+          <button type="button" class="toggle-password" onclick="toggleSenha('regSenha', this)">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+        <div class="password-strength" id="senhaForca">
+          <div class="strength-bar"></div>
+          <div class="strength-bar"></div>
+          <div class="strength-bar"></div>
+        </div>
+        <small id="senhaForcaLabel" class="strength-label"></small>
+      </div>
+      <button type="submit" class="auth-submit"><i class="fas fa-user-plus"></i> Criar conta</button>
+    </form>
+
+    <div class="auth-divider"><span>ou continue com</span></div>
+
+    <div id="g_id_onload"
+         data-client_id="COLE_SEU_CLIENT_ID_AQUI.apps.googleusercontent.com"
+         data-callback="handleGoogleLogin"
+         data-auto_prompt="false">
+    </div>
+    <div class="g_id_signin google-btn-wrapper"
+         data-type="standard" data-size="large" data-theme="outline"
+         data-text="continue_with" data-shape="pill"
+         data-logo_alignment="left" data-width="320">
+    </div>
+
+    <div id="authErro" class="auth-erro" style="display:none;"></div>
+    <a href="index.html" class="auth-voltar"><i class="fas fa-arrow-left"></i> Voltar para o início</a>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.auth-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const isLogin = tab.dataset.tab === 'login';
+      document.getElementById('formLogin').style.display = isLogin ? '' : 'none';
+      document.getElementById('formRegistrar').style.display = isLogin ? 'none' : '';
+      esconderErro();
+    });
+  });
+
+  function toggleSenha(id, btn) {
+    const input = document.getElementById(id);
+    const icon = btn.querySelector('i');
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+      input.type = 'password';
+      icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+  }
+
+  const regSenha = document.getElementById('regSenha');
+  if (regSenha) {
+    regSenha.addEventListener('input', () => {
+      const val = regSenha.value;
+      const bars = document.querySelectorAll('#senhaForca .strength-bar');
+      const label = document.getElementById('senhaForcaLabel');
+      let forca = 0;
+      if (val.length >= 6) forca++;
+      if (val.length >= 10 && /[A-Z]/.test(val)) forca++;
+      if (/[0-9]/.test(val) && /[^A-Za-z0-9]/.test(val)) forca++;
+      bars.forEach((b, i) => {
+        b.className = 'strength-bar';
+        if (i < forca) b.classList.add(forca === 1 ? 'fraca' : forca === 2 ? 'media' : 'forte');
+      });
+      label.textContent = ['', 'Fraca', 'Média', 'Forte'][forca] || '';
+      label.style.color = ['', '#d94b4b', '#ffb300', '#22b573'][forca] || '';
+    });
+  }
+
+  function mostrarErro(msg) {
+    const el = document.getElementById('authErro');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function esconderErro() {
+    document.getElementById('authErro').style.display = 'none';
+  }
+
+  function salvarSessao(data) {
+    localStorage.setItem('viaGen_token', data.token);
+    localStorage.setItem('viaGen_usuario', JSON.stringify(data.usuario));
+  }
+
+  document.getElementById('formLogin').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    esconderErro();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Entrando...';
+    try {
+      const r = await fetch(`${window.API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: document.getElementById('loginEmail').value,
+          senha: document.getElementById('loginSenha').value
+        })
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Erro ao entrar');
+      salvarSessao(data);
+      window.location.href = 'index.html';
+    } catch (err) {
+      mostrarErro(err.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+    }
+  });
+
+  document.getElementById('formRegistrar').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    esconderErro();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Criando...';
+    try {
+      const r = await fetch(`${window.API_URL}/api/auth/registrar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: document.getElementById('regNome').value,
+          email: document.getElementById('regEmail').value,
+          senha: document.getElementById('regSenha').value
+        })
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Erro ao cadastrar');
+      salvarSessao(data);
+      window.location.href = 'index.html';
+    } catch (err) {
+      mostrarErro(err.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-user-plus"></i> Criar conta';
+    }
+  });
+
+  window.handleGoogleLogin = async (response) => {
+    esconderErro();
+    try {
+      const r = await fetch(`${window.API_URL}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential })
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Erro no login Google');
+      salvarSessao(data);
+      window.location.href = 'index.html';
+    } catch (err) {
+      mostrarErro(err.message);
+    }
+  };
+</script>
+</body>
+</html>

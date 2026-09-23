@@ -3,297 +3,499 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ViaGen AI · Planejador inteligente de viagens</title>
+  <title>AHGA Turismo · Excursões Botucatu</title>
 
+  <link rel="icon" type="image/png" href="logo.jpeg">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+
+  <!-- QR Code Generator -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <!-- QR Code Reader -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 
-<!-- TELA INICIAL (busca) -->
-<div class="container" id="homeScreen">
-  <header class="header">
-    <div class="logo">
-      <i class="fas fa-map-marked-alt"></i> Via<span>Gen</span> <small>AI</small>
-    </div>
-    <p class="subhead">Inteligência artificial que planeja sua viagem completa</p>
-  </header>
-
-  <section class="search-panel">
-    <div class="search-title">
-      <i class="fas fa-sliders-h"></i> Conte seu perfil de viagem
-    </div>
-
-    <!-- LINHA 1: Saindo de + Botão trocar + Destino -->
-    <div class="input-row input-row-origin-dest">
-      <div class="input-group">
-        <label>
-          <i class="fas fa-plane-departure"></i> Saindo de
-          <span class="help-icon" title="Digite o nome da sua cidade de origem">?</span>
-        </label>
-        <input 
-          type="text" 
-          id="originInput" 
-          placeholder="Ex: São Paulo, Botucatu..." 
-          list="cidadesList"
-          autocomplete="off"
-        >
-        <small class="input-help">
-          <i class="fas fa-info-circle"></i> Sua cidade de origem
-        </small>
-      </div>
-
-      <button 
-        type="button"
-        class="swap-btn" 
-        id="swapBtn" 
-        title="Trocar origem e destino"
-        aria-label="Trocar origem e destino"
-      >
-        <i class="fas fa-right-left"></i>
+<!-- ============================================================
+     HEADER GLOBAL
+     ============================================================ -->
+<header class="app-header">
+  <div class="app-header-inner">
+    <a href="#" class="app-logo" onclick="irParaHome(event)">
+      <img src="logo.jpeg" alt="AHGA Turismo" class="logo-img">
+    </a>
+    <nav class="app-nav">
+      <a href="#" class="app-nav-link active" data-tab="buscar" onclick="mudarAba(event, 'buscar')">
+        <i class="fas fa-search"></i> Buscar
+      </a>
+      <a href="#" class="app-nav-link" data-tab="excursoes" onclick="mudarAba(event, 'excursoes')">
+        <i class="fas fa-suitcase-rolling"></i> Excursões
+      </a>
+      <a href="#" class="app-nav-link admin-only" data-tab="gerenciar" style="display:none;" onclick="mudarAba(event, 'gerenciar')">
+        <i class="fas fa-cog"></i> Gerenciar
+      </a>
+    </nav>
+    <div class="app-user">
+      <button class="btn-login" id="btnLogin" onclick="abrirLogin()">
+        <i class="fas fa-user-shield"></i> Entrar
       </button>
-
-      <div class="input-group">
-        <label>
-          <i class="fas fa-location-dot"></i> Destino
-          <span class="help-icon" title="Digite o nome da cidade para onde quer ir">?</span>
-        </label>
-        <input 
-          type="text" 
-          id="destinationInput" 
-          placeholder="Ex: Rio de Janeiro, Santos..." 
-          list="cidadesList"
-          autocomplete="off"
-        >
-        <small class="input-help">
-          <i class="fas fa-info-circle"></i> Cidade de destino
-        </small>
+      <div class="app-user-info" id="userInfo" style="display:none;">
+        <div class="user-details">
+          <span class="user-name" id="userNameDisplay">—</span>
+          <span class="user-cargo" id="userCargoDisplay">—</span>
+        </div>
+        <div class="app-user-avatar" id="userAvatar">A</div>
+        <button class="app-logout" id="logoutBtn" title="Sair">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
       </div>
     </div>
+  </div>
+</header>
 
-    <datalist id="cidadesList">
-      <option value="São Paulo">
-      <option value="Rio de Janeiro">
-      <option value="Santos">
-      <option value="Botucatu">
-      <option value="Bauru">
-      <option value="Campinas">
-      <option value="Ribeirão Preto">
-      <option value="São José dos Campos">
-      <option value="Sorocaba">
-      <option value="Piracicaba">
-      <option value="Itu">
-      <option value="Pardinho">
-      <option value="Gramado">
-      <option value="Canela">
-      <option value="Porto Alegre">
-      <option value="Florianópolis">
-      <option value="Balneário Camboriú">
-      <option value="Joinville">
-      <option value="Blumenau">
-      <option value="Curitiba">
-      <option value="Londrina">
-      <option value="Maringá">
-      <option value="Foz do Iguaçu">
-      <option value="Salvador">
-      <option value="Recife">
-      <option value="Fortaleza">
-      <option value="Natal">
-      <option value="Maceió">
-      <option value="Porto de Galinhas">
-      <option value="Belo Horizonte">
-      <option value="Ouro Preto">
-      <option value="Uberlândia">
-      <option value="Vitória">
-      <option value="Brasília">
-      <option value="Goiânia">
-      <option value="Cuiabá">
-      <option value="Campo Grande">
-      <option value="Bonito">
-      <option value="Manaus">
-      <option value="Belém">
-      <option value="Lisboa">
-      <option value="Paris">
-      <option value="Roma">
-      <option value="Barcelona">
-      <option value="Madri">
-      <option value="Londres">
-      <option value="Nova York">
-      <option value="Miami">
-      <option value="Buenos Aires">
-      <option value="Santiago">
-      <option value="Cancún">
-      <option value="Dubai">
-      <option value="Tóquio">
-      <option value="Barra Mansa">
-      <option value="Osasco">
-      <option value="Araras">
-      <option value="Volta Redonda">
-      <option value="Ponta Grossa">
-    </datalist>
+<!-- ============================================================
+     ABA: BUSCAR
+     ============================================================ -->
+<div class="tab-content" id="tab-buscar">
+  <div class="container">
+    <header class="header">
+      <div class="logo">
+        <img src="logo.jpeg" alt="AHGA Turismo" class="hero-logo">
+      </div>
+      <p class="subhead">Excursões e viagens planejadas com inteligência artificial</p>
+    </header>
 
-    <!-- LINHA 2: Abas + Datas OU Noites -->
-    <div class="date-mode-tabs">
-      <button type="button" class="date-tab active" data-mode="dates">
-        <i class="fas fa-calendar-alt"></i> Por Data
-      </button>
-      <button type="button" class="date-tab" data-mode="nights">
-        <i class="fas fa-moon"></i> Por Noites
-      </button>
-    </div>
-
-    <!-- MODO 1: Datas -->
-    <div class="input-row" id="datesRow">
-      <div class="input-group">
-        <label>
-          <i class="fas fa-calendar-alt"></i> Data de entrada
-          <span class="help-icon" title="Data de ida / check-in">?</span>
-        </label>
-        <input type="date" id="dateInput" min="2025-01-01" max="2030-12-31">
-        <small class="input-help">
-          <i class="fas fa-info-circle"></i> Data de ida
-        </small>
+    <section class="search-panel">
+      <div class="search-title">
+        <i class="fas fa-sliders-h"></i> Conte seu perfil de viagem
       </div>
 
-      <div class="input-group">
-        <label>
-          <i class="fas fa-calendar-check"></i> Data de saída
-          <span class="help-icon" title="Data de volta / check-out">?</span>
-        </label>
-        <input type="date" id="dateEndInput" min="2025-01-01" max="2030-12-31">
-        <small class="input-help">
-          <i class="fas fa-info-circle"></i> Data de volta
-        </small>
-      </div>
+      <div class="input-row input-row-origin-dest">
+        <div class="input-group">
+          <label><i class="fas fa-plane-departure"></i> Saindo de</label>
+          <input type="text" id="originInput" placeholder="Ex: Botucatu, São Paulo..." list="cidadesList" autocomplete="off">
+          <small class="input-help"><i class="fas fa-info-circle"></i> Sua cidade de origem</small>
+        </div>
 
-      <div class="input-group" id="nightsInfoGroup" style="display:none;">
-        <label>&nbsp;</label>
-        <div class="nights-badge">
-          <i class="fas fa-moon"></i>
-          <span id="nightsInfo">0 noites</span>
+        <button type="button" class="swap-btn" id="swapBtn" title="Trocar origem e destino">
+          <i class="fas fa-right-left"></i>
+        </button>
+
+        <div class="input-group">
+          <label><i class="fas fa-location-dot"></i> Destino</label>
+          <input type="text" id="destinationInput" placeholder="Ex: Rio de Janeiro, Gramado..." list="cidadesList" autocomplete="off">
+          <small class="input-help"><i class="fas fa-info-circle"></i> Cidade de destino</small>
         </div>
       </div>
-    </div>
 
-    <!-- MODO 2: Só Noites -->
-    <div class="input-row" id="nightsRow" style="display:none;">
-      <div class="input-group">
-        <label>
-          <i class="fas fa-moon"></i> Quantas noites?
-          <span class="help-icon" title="Só escolher o número de noites, sem se preocupar com datas">?</span>
-        </label>
-        <select id="nightsSelect">
-          <option value="">Escolha...</option>
-          <option value="1">1 noite</option>
-          <option value="2">2 noites</option>
-          <option value="3">3 noites</option>
-          <option value="4">4 noites</option>
-          <option value="5">5 noites</option>
-          <option value="6">6 noites</option>
-          <option value="7" selected>7 noites (1 semana)</option>
-          <option value="10">10 noites</option>
-          <option value="14">14 noites (2 semanas)</option>
-          <option value="21">21 noites (3 semanas)</option>
-          <option value="30">30 noites (1 mês)</option>
-        </select>
-        <small class="input-help">
-          <i class="fas fa-info-circle"></i> Não precisa saber o dia exato
-        </small>
-      </div>
+      <datalist id="cidadesList">
+        <option value="São Paulo"><option value="Rio de Janeiro"><option value="Santos">
+        <option value="Botucatu"><option value="Bauru"><option value="Campinas">
+        <option value="Ribeirão Preto"><option value="São José dos Campos"><option value="Sorocaba">
+        <option value="Piracicaba"><option value="Itu"><option value="Pardinho">
+        <option value="Gramado"><option value="Canela"><option value="Porto Alegre">
+        <option value="Florianópolis"><option value="Balneário Camboriú"><option value="Joinville">
+        <option value="Blumenau"><option value="Curitiba"><option value="Londrina">
+        <option value="Maringá"><option value="Foz do Iguaçu"><option value="Salvador">
+        <option value="Recife"><option value="Fortaleza"><option value="Natal">
+        <option value="Maceió"><option value="Porto de Galinhas"><option value="Belo Horizonte">
+        <option value="Ouro Preto"><option value="Uberlândia"><option value="Vitória">
+        <option value="Brasília"><option value="Goiânia"><option value="Cuiabá">
+        <option value="Campo Grande"><option value="Bonito"><option value="Manaus">
+        <option value="Belém"><option value="Lisboa"><option value="Paris">
+        <option value="Roma"><option value="Barcelona"><option value="Madri">
+        <option value="Londres"><option value="Nova York"><option value="Miami">
+        <option value="Buenos Aires"><option value="Santiago"><option value="Cancún">
+        <option value="Dubai"><option value="Tóquio">
+      </datalist>
 
-      <div class="input-group">
-        <label>
-          <i class="fas fa-calendar-plus"></i> Data aproximada (opcional)
-        </label>
-        <input type="date" id="dateApproxInput" min="2025-01-01" max="2030-12-31">
-        <small class="input-help">
-          <i class="fas fa-info-circle"></i> Se souber, informe quando pretende ir
-        </small>
-      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label><i class="fas fa-moon"></i> Quantas noites?</label>
+          <select id="nightsSelect">
+            <option value="">Escolha...</option>
+            <option value="1">1 noite</option>
+            <option value="2">2 noites</option>
+            <option value="3">3 noites</option>
+            <option value="4">4 noites</option>
+            <option value="5">5 noites</option>
+            <option value="6">6 noites</option>
+            <option value="7" selected>7 noites (1 semana)</option>
+            <option value="10">10 noites</option>
+            <option value="14">14 noites (2 semanas)</option>
+            <option value="21">21 noites (3 semanas)</option>
+            <option value="30">30 noites (1 mês)</option>
+          </select>
+          <small class="input-help"><i class="fas fa-info-circle"></i> Não precisa saber o dia exato</small>
+        </div>
 
-      <div class="input-group">
-        <label>&nbsp;</label>
-        <div class="nights-badge" id="nightsBadgeMode">
-          <i class="fas fa-moon"></i>
-          <span id="nightsTextMode">7 noites</span>
+        <div class="input-group">
+          <label><i class="fas fa-calendar-plus"></i> Data aproximada (opcional)</label>
+          <input type="date" id="dateApproxInput" min="2025-01-01" max="2030-12-31">
+          <small class="input-help"><i class="fas fa-info-circle"></i> Se souber, informe quando pretende ir</small>
         </div>
       </div>
-    </div>
 
-    <!-- LINHA 3: Clima + Orçamento -->
-    <div class="input-row">
-      <div class="input-group">
-        <label><i class="fas fa-temperature-high"></i> Clima preferido</label>
-        <select id="climateSelect">
-          <option value="">Todos</option>
-          <option value="calor">Calor / Quente</option>
-          <option value="frio">Frio / Neve</option>
-          <option value="ameno">Ameno</option>
-          <option value="tropical">Tropical</option>
-          <option value="seco">Seco / Desértico</option>
-        </select>
-      </div>
-
-      <div class="input-group">
-        <label>
-          <i class="fas fa-wallet"></i> Orçamento total (R$)
-          <span class="help-icon" title="Valor total da viagem (transporte + hotel + passeios)">?</span>
-        </label>
-        <input 
-          type="number" 
-          id="budgetInput" 
-          placeholder="Ex: 8000" 
-          min="0" 
-          step="100"
-          autocomplete="off"
-        >
-        <div class="budget-presets">
-          <button type="button" class="budget-chip" data-value="5000">5k</button>
-          <button type="button" class="budget-chip" data-value="10000">10k</button>
-          <button type="button" class="budget-chip" data-value="20000">20k</button>
-          <button type="button" class="budget-chip" data-value="50000">50k</button>
+      <div class="input-row">
+        <div class="input-group">
+          <label><i class="fas fa-temperature-high"></i> Clima preferido</label>
+          <select id="climateSelect">
+            <option value="">Todos</option>
+            <option value="calor">Calor / Quente</option>
+            <option value="frio">Frio / Neve</option>
+            <option value="ameno">Ameno</option>
+            <option value="tropical">Tropical</option>
+            <option value="seco">Seco / Desértico</option>
+          </select>
         </div>
-        <small class="input-help">
-          <i class="fas fa-info-circle"></i> Valor total: transporte + hotel + passeios
-        </small>
+
+        <div class="input-group">
+          <label><i class="fas fa-wallet"></i> Orçamento total (R$)</label>
+          <input type="number" id="budgetInput" placeholder="Ex: 8000" min="0" step="100" autocomplete="off">
+          <div class="budget-presets">
+            <button type="button" class="budget-chip" data-value="5000">5k</button>
+            <button type="button" class="budget-chip" data-value="10000">10k</button>
+            <button type="button" class="budget-chip" data-value="20000">20k</button>
+            <button type="button" class="budget-chip" data-value="50000">50k</button>
+          </div>
+          <small class="input-help"><i class="fas fa-info-circle"></i> Valor total: transporte + hotel + passeios</small>
+        </div>
       </div>
 
-    <button class="search-btn" id="searchBtn">
-      <i class="fas fa-search"></i> Buscar viagens
-    </button>
-
-    <div class="ai-panel">
-      <button class="ai-btn" id="aiBtn">
-        <i class="fas fa-wand-magic-sparkles"></i> Gerar roteiro completo com IA
+      <button class="search-btn" id="searchBtn">
+        <i class="fas fa-search"></i> Buscar viagens
       </button>
-      <p class="ai-hint">A IA cria uma viagem inteira: múltiplos destinos, dias em cada lugar e roteiro dia a dia.</p>
-    </div>
-  </section>
 
-  <footer class="footer-note">
-    <i class="fas fa-plane"></i> ViaGen AI &copy; 2025
-  </footer>
+      <div class="ai-panel">
+        <button class="ai-btn" id="aiBtn">
+          <i class="fas fa-wand-magic-sparkles"></i> Gerar roteiro completo com IA
+        </button>
+        <p class="ai-hint">A IA cria uma viagem inteira: múltiplos destinos, dias em cada lugar e roteiro dia a dia.</p>
+      </div>
+    </section>
+
+    <footer class="footer-note">
+      <img src="logo.jpeg" alt="AHGA" class="footer-logo">
+      <span>AHGA Turismo · Excursões Botucatu &copy; 2025</span>
+    </footer>
+  </div>
 </div>
 
-<!-- TELA CHEIA DE RESULTADOS -->
-<div class="fullscreen-results" id="resultsScreen">
-  <div class="fullscreen-header">
-    <div class="fullscreen-header-left">
-      <button class="back-btn" id="backBtn">
-        <i class="fas fa-arrow-left"></i> Voltar
-      </button>
-      <h2 id="resultsScreenTitle">
-        <i class="fas fa-suitcase-rolling"></i> Resultados da busca
-      </h2>
+<!-- ============================================================
+     ABA: EXCURSÕES
+     ============================================================ -->
+<div class="tab-content" id="tab-excursoes" style="display:none;">
+  <div class="container">
+    <header class="header">
+      <div class="logo">
+        <img src="logo.jpeg" alt="AHGA Turismo" class="hero-logo">
+      </div>
+      <p class="subhead">Excursões organizadas com roteiro, transporte e hospedagem</p>
+    </header>
+
+    <div id="excursoesPublicas" class="excursoes-grid">
+      <div class="empty-state">
+        <i class="fas fa-circle-notch fa-spin"></i>
+        <p>Carregando excursões...</p>
+      </div>
     </div>
-    <div class="fullscreen-header-right">
-      <span class="badge-info" id="resultCount">0 destinos</span>
-      <button class="ai-btn small" id="aiBtnFull">
-        <i class="fas fa-wand-magic-sparkles"></i> Roteiro IA
+  </div>
+</div>
+
+<!-- ============================================================
+     ABA: GERENCIAR
+     ============================================================ -->
+<div class="tab-content" id="tab-gerenciar" style="display:none;">
+  <div class="container">
+    <header class="header">
+      <div class="logo">
+        <img src="logo.jpeg" alt="AHGA Turismo" class="hero-logo">
+      </div>
+      <p class="subhead">Painel de gerenciamento de excursões</p>
+    </header>
+
+    <div class="admin-actions">
+      <button class="btn-secondary" onclick="abrirLeitor()">
+        <i class="fas fa-qrcode"></i> Validar Embarque
+      </button>
+      <button class="btn-primary" onclick="abrirFormExcursao()">
+        <i class="fas fa-plus"></i> Nova excursão
+      </button>
+    </div>
+
+    <div id="adminExcursoesList" class="admin-list">
+      <div class="empty-state">
+        <i class="fas fa-circle-notch fa-spin"></i>
+        <p>Carregando...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL LOGIN
+     ============================================================ -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal login-modal">
+    <button class="modal-close" onclick="fecharLogin()"><i class="fas fa-times"></i></button>
+    <div class="login-header">
+      <img src="logo.jpeg" alt="AHGA" class="login-logo">
+      <h2 class="login-title">Acesso Restrito</h2>
+      <p class="login-sub">Área exclusiva da equipe AHGA Turismo</p>
+    </div>
+
+    <form id="formLoginAdmin" class="auth-form">
+      <div class="auth-field">
+        <label><i class="fas fa-user"></i> Usuário</label>
+        <input type="text" id="adminUser" placeholder="Digite seu usuário" required autocomplete="off">
+      </div>
+      <div class="auth-field">
+        <label><i class="fas fa-lock"></i> Senha</label>
+        <div class="password-wrapper">
+          <input type="password" id="adminSenha" placeholder="Digite sua senha" required autocomplete="off">
+          <button type="button" class="toggle-password" onclick="toggleSenha('adminSenha', this)">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="auth-submit">
+        <i class="fas fa-sign-in-alt"></i> Entrar
+      </button>
+    </form>
+
+    <div id="authErro" class="auth-erro" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL EXCURSÃO
+     ============================================================ -->
+<div class="modal-overlay" id="excursaoModal">
+  <div class="modal excursao-modal">
+    <button class="modal-close" onclick="fecharFormExcursao()"><i class="fas fa-times"></i></button>
+    <h3><i class="fas fa-suitcase-rolling"></i> <span id="excursaoFormTitle">Nova excursão</span></h3>
+    <p class="modal-sub">Preencha os dados. Campos com * são obrigatórios.</p>
+
+    <form id="formExcursao" class="excursao-form">
+      <input type="hidden" id="excursaoId">
+
+      <div class="form-row">
+        <div class="auth-field">
+          <label>Título *</label>
+          <input type="text" id="excTitulo" placeholder="Ex: Fim de semana em Gramado" required>
+        </div>
+        <div class="auth-field">
+          <label>Destino *</label>
+          <input type="text" id="excDestino" placeholder="Ex: Gramado, RS" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="auth-field">
+          <label>Data de ida *</label>
+          <input type="date" id="excDataIda" required>
+        </div>
+        <div class="auth-field">
+          <label>Data de volta</label>
+          <input type="date" id="excDataVolta">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="auth-field">
+          <label>Preço por pessoa (R$) *</label>
+          <input type="number" id="excPreco" placeholder="Ex: 1500" min="0" step="50" required>
+        </div>
+        <div class="auth-field">
+          <label>Vagas disponíveis</label>
+          <input type="number" id="excVagas" placeholder="Ex: 20" min="0">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="auth-field">
+          <label>Categoria</label>
+          <select id="excCategoria">
+            <option value="Geral">Geral</option>
+            <option value="Praia">Praia</option>
+            <option value="Serra">Serra</option>
+            <option value="Cultural">Cultural</option>
+            <option value="Aventura">Aventura</option>
+            <option value="Internacional">Internacional</option>
+          </select>
+        </div>
+        <div class="auth-field">
+          <label>URL da imagem</label>
+          <input type="url" id="excImagem" placeholder="https://...">
+        </div>
+      </div>
+
+      <div class="auth-field">
+        <label>Descrição</label>
+        <textarea id="excDescricao" rows="3" placeholder="Descreva a excursão..."></textarea>
+      </div>
+
+      <div class="auth-field">
+        <label>O que está incluso (um por linha)</label>
+        <textarea id="excInclui" rows="3" placeholder="Transporte&#10;Hospedagem&#10;Café da manhã&#10;Guia turístico"></textarea>
+      </div>
+
+      <div class="auth-field">
+        <label>Roteiro (um item por linha)</label>
+        <textarea id="excRoteiro" rows="4" placeholder="Dia 1 - Chegada e check-in&#10;Dia 2 - Passeio turístico&#10;Dia 3 - Retorno"></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" onclick="fecharFormExcursao()">Cancelar</button>
+        <button type="submit" class="btn-primary" id="btnSalvarExcursao">
+          <i class="fas fa-save"></i> Salvar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL DE COMPRA DE EXCURSÃO
+     ============================================================ -->
+<div class="modal-overlay" id="compraModal">
+  <div class="modal compra-modal">
+    <button class="modal-close" onclick="fecharCompra()"><i class="fas fa-times"></i></button>
+    <h3><i class="fas fa-ticket-alt"></i> Comprar excursão</h3>
+    <p class="modal-sub" id="compraExcursaoNome">—</p>
+
+    <form id="formCompra" class="auth-form">
+      <input type="hidden" id="compraExcursaoId">
+      
+      <div class="auth-field">
+        <label><i class="fas fa-user"></i> Nome completo *</label>
+        <input type="text" id="compraNome" placeholder="Seu nome completo" required>
+      </div>
+
+      <div class="form-row">
+        <div class="auth-field">
+          <label><i class="fas fa-id-card"></i> RG *</label>
+          <input type="text" id="compraRG" placeholder="00.000.000-0" required>
+        </div>
+        <div class="auth-field">
+          <label><i class="fas fa-id-card"></i> CPF *</label>
+          <input type="text" id="compraCPF" placeholder="000.000.000-00" required maxlength="14">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="auth-field">
+          <label><i class="fas fa-phone"></i> Telefone/WhatsApp *</label>
+          <input type="tel" id="compraTelefone" placeholder="(14) 99999-9999" required>
+        </div>
+        <div class="auth-field">
+          <label><i class="fas fa-users"></i> Nº de pessoas *</label>
+          <input type="number" id="compraQtd" value="1" min="1" max="50" required>
+        </div>
+      </div>
+
+      <div class="auth-field">
+        <label><i class="fas fa-envelope"></i> E-mail (opcional)</label>
+        <input type="email" id="compraEmail" placeholder="seu@email.com">
+      </div>
+
+      <div class="auth-field">
+        <label><i class="fas fa-comment"></i> Observações (opcional)</label>
+        <textarea id="compraObs" rows="2" placeholder="Alguma observação?"></textarea>
+      </div>
+
+      <div class="compra-resumo" id="compraResumo"></div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" onclick="fecharCompra()">Cancelar</button>
+        <button type="submit" class="btn-primary" id="btnEnviarCompra">
+          <i class="fab fa-whatsapp"></i> Enviar pelo WhatsApp
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL DO CARTÃO DE EMBARQUE (com QR Code)
+     ============================================================ -->
+<div class="modal-overlay" id="embarqueModal">
+  <div class="modal embarque-modal">
+    <button class="modal-close" onclick="fecharEmbarque()"><i class="fas fa-times"></i></button>
+    <h3><i class="fas fa-plane-departure"></i> Cartão de Embarque</h3>
+    <p class="modal-sub">Apresente este QR Code no embarque</p>
+
+    <div class="embarque-card" id="embarqueCard">
+      <div class="embarque-header">
+        <img src="logo.jpeg" alt="AHGA" class="embarque-logo">
+        <div class="embarque-titulo">AHGA Turismo</div>
+      </div>
+      <div class="embarque-body">
+        <div class="embarque-info">
+          <div class="embarque-row"><span>Passageiro:</span><strong id="embNome">—</strong></div>
+          <div class="embarque-row"><span>RG:</span><strong id="embRG">—</strong></div>
+          <div class="embarque-row"><span>CPF:</span><strong id="embCPF">—</strong></div>
+          <div class="embarque-row"><span>Excursão:</span><strong id="embExcursao">—</strong></div>
+          <div class="embarque-row"><span>Destino:</span><strong id="embDestino">—</strong></div>
+          <div class="embarque-row"><span>Data:</span><strong id="embData">—</strong></div>
+          <div class="embarque-row"><span>Pessoas:</span><strong id="embQtd">—</strong></div>
+          <div class="embarque-row"><span>Código:</span><strong id="embCodigo">—</strong></div>
+        </div>
+        <div class="embarque-qr">
+          <canvas id="qrcodeCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" onclick="baixarCartao()">
+        <i class="fas fa-download"></i> Baixar
+      </button>
+      <button type="button" class="btn-primary" onclick="window.print()">
+        <i class="fas fa-print"></i> Imprimir
       </button>
     </div>
   </div>
+</div>
 
+<!-- ============================================================
+     MODAL LEITOR DE QR CODE (ADMIN)
+     ============================================================ -->
+<div class="modal-overlay" id="leitorModal">
+  <div class="modal leitor-modal">
+    <button class="modal-close" onclick="fecharLeitor()"><i class="fas fa-times"></i></button>
+    <h3><i class="fas fa-qrcode"></i> Leitor de Cartão de Embarque</h3>
+    <p class="modal-sub">Aponte a câmera para o QR Code do passageiro</p>
+
+    <div id="leitorQR" class="leitor-qr"></div>
+    <div id="leitorResultado" class="leitor-resultado" style="display:none;"></div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" onclick="fecharLeitor()">Fechar</button>
+      <button type="button" class="btn-primary" id="btnIniciarLeitor">
+        <i class="fas fa-camera"></i> Iniciar câmera
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     TELAS FULLSCREEN
+     ============================================================ -->
+<div class="fullscreen-results" id="resultsScreen">
+  <div class="fullscreen-header">
+    <div class="fullscreen-header-left">
+      <button class="back-btn" id="backBtn"><i class="fas fa-arrow-left"></i> Voltar</button>
+      <h2 id="resultsScreenTitle"><i class="fas fa-suitcase-rolling"></i> Resultados da busca</h2>
+    </div>
+    <div class="fullscreen-header-right">
+      <span class="badge-info" id="resultCount">0 destinos</span>
+      <button class="ai-btn small" id="aiBtnFull"><i class="fas fa-wand-magic-sparkles"></i> Roteiro IA</button>
+    </div>
+  </div>
   <div class="fullscreen-filters">
     <span class="filter-chip active" data-filter="all"><i class="fas fa-globe"></i> Todos</span>
     <span class="filter-chip" data-filter="frio"><i class="fas fa-snowflake"></i> Frio</span>
@@ -302,75 +504,62 @@
     <span class="filter-chip" data-filter="ameno"><i class="fas fa-cloud-sun"></i> Ameno</span>
     <span class="filter-chip" data-filter="seco"><i class="fas fa-mountain"></i> Seco</span>
   </div>
-
   <div class="fullscreen-body">
     <div class="cards-grid" id="cardsContainer"></div>
   </div>
 </div>
 
-<!-- TELA DE PACOTES -->
 <div class="fullscreen-results packages-screen" id="packagesScreen">
   <div class="fullscreen-header">
     <div class="fullscreen-header-left">
-      <button class="back-btn" id="backFromPackages">
-        <i class="fas fa-arrow-left"></i> Voltar
-      </button>
-      <h2 id="packagesTitle">
-        <i class="fas fa-tags"></i> Pacotes para <span id="packagesDestName">—</span>
-      </h2>
+      <button class="back-btn" id="backFromPackages"><i class="fas fa-arrow-left"></i> Voltar</button>
+      <h2><i class="fas fa-tags"></i> Pacotes para <span id="packagesDestName">—</span></h2>
     </div>
     <div class="fullscreen-header-right">
       <span class="badge-info" id="packagesCount">0 ofertas</span>
     </div>
   </div>
-
   <div class="packages-summary" id="packagesSummary"></div>
-
   <div class="packages-tabs">
     <button class="tab-btn active" data-tab="all"><i class="fas fa-list"></i> Tudo</button>
     <button class="tab-btn" data-tab="flights"><i class="fas fa-plane"></i> Voos</button>
     <button class="tab-btn" data-tab="bus"><i class="fas fa-bus"></i> Ônibus</button>
     <button class="tab-btn" data-tab="hotels"><i class="fas fa-hotel"></i> Hotéis</button>
-    <button class="tab-btn" data-tab="packages"><i class="fas fa-box-open"></i> Pacotes completos</button>
+    <button class="tab-btn" data-tab="packages"><i class="fas fa-box-open"></i> Pacotes</button>
   </div>
-
   <div class="fullscreen-body">
     <div class="offers-list" id="offersContainer"></div>
   </div>
 </div>
 
-<!-- TELA DE ROTEIRO IA -->
 <div class="fullscreen-results itinerary-screen" id="itineraryScreen">
   <div class="fullscreen-header">
     <div class="fullscreen-header-left">
-      <button class="back-btn" id="backFromItinerary">
-        <i class="fas fa-arrow-left"></i> Voltar
-      </button>
+      <button class="back-btn" id="backFromItinerary"><i class="fas fa-arrow-left"></i> Voltar</button>
       <h2><i class="fas fa-route"></i> Sua viagem personalizada pela IA</h2>
     </div>
     <div class="fullscreen-header-right">
-      <button class="ai-btn small" id="regenerateBtn">
-        <i class="fas fa-rotate"></i> Gerar outra
-      </button>
+      <button class="ai-btn small" id="regenerateBtn"><i class="fas fa-rotate"></i> Gerar outra</button>
     </div>
   </div>
-
   <div class="ai-loading" id="aiLoading" style="display: none;">
     <i class="fas fa-circle-notch fa-spin"></i>
     <span>IA criando sua viagem perfeita...</span>
   </div>
-
   <div class="fullscreen-body">
     <div class="itinerary-summary" id="itinerarySummary"></div>
     <div class="itinerary-timeline" id="itineraryTimeline"></div>
   </div>
 </div>
 
-<!-- MODAL -->
+<!-- MODAL genérico -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal" id="modalContent"></div>
 </div>
 
+<script src="config.js"></script>
+<script src="admin.js"></script>
+<script src="compra.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

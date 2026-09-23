@@ -339,4 +339,4 @@
     return embaralhadas.slice(0, quantidade);
   }
   
-  console.log(`✅ cidades.js carregado — ${getPaisesDisponiveis().length} países disponíveis`);
+  console.log(`✅ cidades.js carregado — ${getPaisesDisponiveis().length} países disponíveis para AHGA Turismo`);
