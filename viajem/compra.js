@@ -90,9 +90,9 @@ async function abrirCompra(excursaoId) {
     document.body.style.overflow = 'hidden';
 
     // Pré-preenche com dados do usuário logado (se houver)
-    const sessao = getSessao();
-    if (sessao) {
-      document.getElementById('compraNome').value = sessao.nome || '';
+    const sessao = typeof getSessao === 'function' ? getSessao() : null;
+    if (sessao && sessao.nome) {
+      document.getElementById('compraNome').value = sessao.nome;
     }
   } catch (err) {
     console.error(err);
@@ -121,7 +121,23 @@ function atualizarResumo() {
 }
 
 /* ============================================================
-   ENVIO PARA WHATSAPP
+   POPULA O SELECT DE VENDEDORES
+   ============================================================ */
+function popularVendedores() {
+  const select = document.getElementById('compraVendedor');
+  if (!select) return;
+  // Limpa, mantendo só a option padrão
+  select.innerHTML = '<option value="">Escolha um vendedor...</option>';
+  WHATSAPP_NUMEROS.forEach(function (v) {
+    const opt = document.createElement('option');
+    opt.value = v.numero;
+    opt.textContent = v.nome + ' — ' + v.cargo;
+    select.appendChild(opt);
+  });
+}
+
+/* ============================================================
+   INICIALIZAÇÃO
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
   // Máscaras
@@ -135,6 +151,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (telInput) telInput.addEventListener('input', e => e.target.value = mascaraTelefone(e.target.value));
   if (qtdInput) qtdInput.addEventListener('input', atualizarResumo);
 
+  // Popula select de vendedores
+  popularVendedores();
+
   // Submit do form de compra
   document.getElementById('formCompra')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -146,7 +165,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const qtd = parseInt(document.getElementById('compraQtd').value) || 1;
     const email = document.getElementById('compraEmail').value.trim();
     const obs = document.getElementById('compraObs').value.trim();
+    const vendedorNumero = document.getElementById('compraVendedor')?.value || '';
 
+    // Validações
     if (!nome || !rg || !cpf || !telefone) {
       alert('Preencha todos os campos obrigatórios');
       return;
@@ -154,6 +175,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!validarCPF(cpf)) {
       alert('CPF inválido. Verifique e tente novamente.');
+      return;
+    }
+
+    if (!vendedorNumero) {
+      alert('Por favor, escolha um vendedor para enviar a mensagem.');
       return;
     }
 
@@ -213,7 +239,7 @@ ${obs ? `\n*Observações:* ${obs}` : ''}
 Aguardo as instruções para pagamento via PIX. 🙏
       `.trim();
 
-      const url = `https://wa.me/${WHATSAPP_AGENCIA}?text=${encodeURIComponent(msg)}`;
+      const url = `https://wa.me/${vendedorNumero}?text=${encodeURIComponent(msg)}`;
       window.open(url, '_blank');
 
       // Guarda a compra para gerar cartão depois
@@ -280,13 +306,17 @@ function mostrarCartaoEmbarque(compra) {
   });
 
   const canvas = document.getElementById('qrcodeCanvas');
-  QRCode.toCanvas(canvas, qrData, {
-    width: 200,
-    margin: 1,
-    color: { dark: '#1e2b3c', light: '#ffffff' }
-  }, (err) => {
-    if (err) console.error('Erro QR Code:', err);
-  });
+  if (typeof QRCode !== 'undefined') {
+    QRCode.toCanvas(canvas, qrData, {
+      width: 200,
+      margin: 1,
+      color: { dark: '#1e2b3c', light: '#ffffff' }
+    }, (err) => {
+      if (err) console.error('Erro QR Code:', err);
+    });
+  } else {
+    console.warn('QRCode library não carregada');
+  }
 
   document.getElementById('embarqueModal').classList.add('active');
   document.body.style.overflow = 'hidden';
@@ -299,9 +329,6 @@ function fecharEmbarque() {
 
 function baixarCartao() {
   const canvas = document.getElementById('qrcodeCanvas');
-  const card = document.getElementById('embarqueCard');
-
-  // Baixa só o QR Code como PNG
   const link = document.createElement('a');
   link.download = `cartao-embarque-${document.getElementById('embCodigo').textContent}.png`;
   link.href = canvas.toDataURL('image/png');
@@ -338,6 +365,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('leitorQR');
     container.innerHTML = '';
 
+    if (typeof Html5Qrcode === 'undefined') {
+      alert('Biblioteca do leitor QR não carregada. Recarregue a página.');
+      return;
+    }
+
     html5QrScanner = new Html5Qrcode("leitorQR");
 
     try {
@@ -345,7 +377,6 @@ document.addEventListener('DOMContentLoaded', () => {
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
-          // QR lido com sucesso
           html5QrScanner.stop().then(() => {
             html5QrScanner.clear();
             html5QrScanner = null;
@@ -388,7 +419,6 @@ async function processarQRCode(texto) {
     return;
   }
 
-  // Busca no backend para confirmar
   try {
     const r = await fetch(`${API_URL_COMPRA}/api/compras/${dados.codigo}`);
     const data = await r.json();
@@ -418,7 +448,6 @@ async function processarQRCode(texto) {
       return;
     }
 
-    // Marca como utilizado
     await fetch(`${API_URL_COMPRA}/api/compras/${dados.codigo}/validar`, {
       method: 'POST'
     });
@@ -457,3 +486,5 @@ window.fecharEmbarque = fecharEmbarque;
 window.baixarCartao = baixarCartao;
 window.abrirLeitor = abrirLeitor;
 window.fecharLeitor = fecharLeitor;
+
+console.log('✅ compra.js carregado com sucesso');
