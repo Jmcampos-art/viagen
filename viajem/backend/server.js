@@ -1029,6 +1029,30 @@ app.delete('/api/excursoes/:id', exigirAdminHeader, async (req, res) => {
 /* ============================================================
    COMPRAS — MongoDB Atlas
    ============================================================ */
+
+/* GET público — listar compras (com filtro opcional por CPF) */
+app.get('/api/compras', async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.json({ compras: [] });
+
+    const filtro = {};
+    if (req.query.cpf) {
+      filtro.cpf = req.query.cpf;
+    }
+
+    const lista = await db.collection('compras')
+      .find(filtro)
+      .sort({ criadoEm: -1 })
+      .toArray();
+
+    res.json({ compras: lista });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* POST público — registrar nova compra */
 app.post('/api/compras', async (req, res) => {
   try {
     const db = getDB();
@@ -1058,6 +1082,7 @@ app.post('/api/compras', async (req, res) => {
   }
 });
 
+/* GET público — buscar compra por código (para o cartão) */
 app.get('/api/compras/:codigo', async (req, res) => {
   try {
     const db = getDB();
@@ -1071,6 +1096,7 @@ app.get('/api/compras/:codigo', async (req, res) => {
   }
 });
 
+/* POST público — validar embarque (marcar como utilizado) */
 app.post('/api/compras/:codigo/validar', async (req, res) => {
   try {
     const db = getDB();
@@ -1091,22 +1117,6 @@ app.post('/api/compras/:codigo/validar', async (req, res) => {
     const atualizada = await db.collection('compras').findOne({ codigo: req.params.codigo });
     console.log(`✅ Embarque validado: ${req.params.codigo}`);
     res.json({ ok: true, compra: atualizada });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/compras', async (req, res) => {
-  try {
-    const db = getDB();
-    if (!db) return res.json({ compras: [] });
-
-    const lista = await db.collection('compras')
-      .find({})
-      .sort({ criadoEm: -1 })
-      .toArray();
-
-    res.json({ compras: lista });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

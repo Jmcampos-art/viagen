@@ -3,6 +3,7 @@
    ============================================================ */
 
 const API_URL_ADMIN = window.API_URL || 'http://localhost:3000';
+const URL_SITE_PUBLICO = 'https://ahgaturismo.netlify.app'; // ← troque pela sua URL real
 
 /* ============================================================
    USUÁRIOS AUTORIZADOS
@@ -65,7 +66,7 @@ function isLogado() {
 }
 
 /* ============================================================
-   HEADER — atualiza visibilidade de abas por tipo de usuário
+   HEADER
    ============================================================ */
 function atualizarHeader() {
   const sessao = getSessao();
@@ -77,7 +78,6 @@ function atualizarHeader() {
   const avatarEl = document.getElementById('userAvatar');
 
   if (sessao) {
-    // ✅ LOGADO (admin/vendedor): mostra tudo
     if (btnLogin) btnLogin.style.display = 'none';
     if (userInfo) userInfo.style.display = 'flex';
     adminLinks.forEach(function(el) { el.style.display = ''; });
@@ -90,7 +90,6 @@ function atualizarHeader() {
       avatarEl.textContent = inicial;
     }
   } else {
-    // ❌ NÃO LOGADO (cliente): só excursões visíveis
     if (btnLogin) btnLogin.style.display = '';
     if (userInfo) userInfo.style.display = 'none';
     adminLinks.forEach(function(el) { el.style.display = 'none'; });
@@ -108,19 +107,17 @@ function aplicarPermissoes() {
 }
 
 /* ============================================================
-   ABAS — com trava de segurança para clientes
+   ABAS
    ============================================================ */
 function mudarAba(e, aba) {
   if (e) e.preventDefault();
 
   const sessao = getSessao();
 
-  // 🔒 Trava: cliente só pode ver "excursoes"
   if (!sessao && aba !== 'excursoes') {
     aba = 'excursoes';
   }
 
-  // 🔒 Trava extra: se não estiver logado e tentar "gerenciar"
   if (aba === 'gerenciar' && !sessao) {
     abrirLogin();
     return;
@@ -145,12 +142,14 @@ function mudarAba(e, aba) {
   if (link) link.classList.add('active');
 
   if (aba === 'excursoes') carregarExcursoesPublicas();
-  if (aba === 'gerenciar') carregarExcursoesAdmin();
+  if (aba === 'gerenciar') {
+    carregarExcursoesAdmin();
+    carregarComprasAdmin();
+  }
 }
 
 function irParaHome(e) {
   if (e) e.preventDefault();
-  // Se logado vai pra Buscar, se cliente vai pra Excursões
   mudarAba(null, isLogado() ? 'buscar' : 'excursoes');
 }
 
@@ -363,6 +362,81 @@ async function carregarExcursoesAdmin() {
   }
 }
 
+/* ============================================================
+   COMPRAS - ADMIN (com botões de copiar link + WhatsApp)
+   ============================================================ */
+async function carregarComprasAdmin() {
+  const container = document.getElementById('adminComprasList');
+  const sessao = getSessao();
+  if (!sessao || !container) return;
+
+  container.innerHTML = '<div class="empty-state"><i class="fas fa-circle-notch fa-spin"></i><p>Carregando compras...</p></div>';
+
+  try {
+    const r = await fetch(API_URL_ADMIN + '/api/compras');
+    const data = await r.json();
+    const lista = data.compras || [];
+
+    if (!lista.length) {
+      container.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><p>Nenhuma compra registrada ainda.</p></div>';
+      return;
+    }
+
+    let linhas = '';
+    lista.forEach(function(c) {
+      const statusBadge = c.status === 'utilizado'
+        ? '<span style="background:#d4f5e5;color:#0d7a4a;padding:0.2rem 0.6rem;border-radius:1rem;font-size:0.75rem;font-weight:700;">Utilizado</span>'
+        : '<span style="background:#fff3cd;color:#7a5b1a;padding:0.2rem 0.6rem;border-radius:1rem;font-size:0.75rem;font-weight:700;">Pendente</span>';
+
+      const telLimpo = (c.telefone || '').replace(/\D/g, '');
+      const msgWhats = encodeURIComponent(
+        `Olá ${c.nome}! Aqui está o link do seu cartão de embarque da AHGA Turismo:\n\n${URL_SITE_PUBLICO}/cartao.html?codigo=${c.codigo}\n\nApresente o QR Code no dia da excursão. Boa viagem! 🚌`
+      );
+
+      linhas += '<tr>' +
+        '<td><strong>' + (c.nome || '—') + '</strong></td>' +
+        '<td>' + (c.cpf || '—') + '</td>' +
+        '<td>' + (c.excursaoTitulo || '—') + '</td>' +
+        '<td>' + (c.qtd || 1) + '</td>' +
+        '<td><code style="font-size:0.8rem;">' + (c.codigo || '—') + '</code></td>' +
+        '<td>' + statusBadge + '</td>' +
+        '<td class="admin-actions-cell">' +
+          '<button class="icon-btn" title="Copiar link do cartão" onclick=\'copiarLinkCartao("' + c.codigo + '")\'>' +
+            '<i class="fas fa-link"></i>' +
+          '</button>' +
+          (telLimpo ? '<a class="icon-btn" title="Enviar por WhatsApp" target="_blank" rel="noopener noreferrer" href="https://wa.me/55' + telLimpo + '?text=' + msgWhats + '">' +
+            '<i class="fab fa-whatsapp"></i>' +
+          '</a>' : '') +
+        '</td>' +
+      '</tr>';
+    });
+
+    container.innerHTML = '<table class="admin-table">' +
+      '<thead><tr><th>Passageiro</th><th>CPF</th><th>Excursão</th><th>Pessoas</th><th>Código</th><th>Status</th><th>Ações</th></tr></thead>' +
+      '<tbody>' + linhas + '</tbody>' +
+    '</table>';
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Erro ao carregar compras.</p></div>';
+  }
+}
+
+function copiarLinkCartao(codigo) {
+  const url = URL_SITE_PUBLICO + '/cartao.html?codigo=' + codigo;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function() {
+      alert('✅ Link copiado!\n\n' + url + '\n\nAgora é só colar no WhatsApp do cliente.');
+    }).catch(function() {
+      prompt('Copie o link abaixo:', url);
+    });
+  } else {
+    prompt('Copie o link abaixo:', url);
+  }
+}
+
+/* ============================================================
+   FORM EXCURSÃO
+   ============================================================ */
 function abrirFormExcursao(exc) {
   const modal = document.getElementById('excursaoModal');
   const title = document.getElementById('excursaoFormTitle');
@@ -458,11 +532,10 @@ document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 admin.js inicializado');
   atualizarHeader();
 
-  // ✅ Define a aba inicial baseada no login
   if (isLogado()) {
-    mudarAba(null, 'buscar'); // Admin/vendedor começa em Buscar
+    mudarAba(null, 'buscar');
   } else {
-    mudarAba(null, 'excursoes'); // Cliente começa em Excursões
+    mudarAba(null, 'excursoes');
   }
 
   const formLogin = document.getElementById('formLoginAdmin');
@@ -604,6 +677,8 @@ window.fecharFormExcursao = fecharFormExcursao;
 window.editarExcursao = editarExcursao;
 window.excluirExcursao = excluirExcursao;
 window.verDetalhesExcursao = verDetalhesExcursao;
+window.carregarComprasAdmin = carregarComprasAdmin;
+window.copiarLinkCartao = copiarLinkCartao;
 window.getSessao = getSessao;
 window.setSessao = setSessao;
 

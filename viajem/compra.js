@@ -1,5 +1,5 @@
 /* ============================================================
-   AHGA TURISMO - Sistema de Compra + QR Code de Embarque
+   AHGA TURISMO - Sistema de Compra + QR Code + Solicitação
    ============================================================ */
 
 const API_URL_COMPRA = window.API_URL || 'http://localhost:3000';
@@ -89,7 +89,6 @@ async function abrirCompra(excursaoId) {
     document.getElementById('compraModal').classList.add('active');
     document.body.style.overflow = 'hidden';
 
-    // Pré-preenche com dados do usuário logado (se houver)
     const sessao = typeof getSessao === 'function' ? getSessao() : null;
     if (sessao && sessao.nome) {
       document.getElementById('compraNome').value = sessao.nome;
@@ -121,12 +120,11 @@ function atualizarResumo() {
 }
 
 /* ============================================================
-   POPULA O SELECT DE VENDEDORES
+   POPULA SELECT DE VENDEDORES
    ============================================================ */
 function popularVendedores() {
   const select = document.getElementById('compraVendedor');
   if (!select) return;
-  // Limpa, mantendo só a option padrão
   select.innerHTML = '<option value="">Escolha um vendedor...</option>';
   WHATSAPP_NUMEROS.forEach(function (v) {
     const opt = document.createElement('option');
@@ -140,7 +138,6 @@ function popularVendedores() {
    INICIALIZAÇÃO
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
-  // Máscaras
   const cpfInput = document.getElementById('compraCPF');
   const rgInput = document.getElementById('compraRG');
   const telInput = document.getElementById('compraTelefone');
@@ -151,10 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (telInput) telInput.addEventListener('input', e => e.target.value = mascaraTelefone(e.target.value));
   if (qtdInput) qtdInput.addEventListener('input', atualizarResumo);
 
-  // Popula select de vendedores
   popularVendedores();
 
-  // Submit do form de compra
   document.getElementById('formCompra')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -167,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const obs = document.getElementById('compraObs').value.trim();
     const vendedorNumero = document.getElementById('compraVendedor')?.value || '';
 
-    // Validações
     if (!nome || !rg || !cpf || !telefone) {
       alert('Preencha todos os campos obrigatórios');
       return;
@@ -188,10 +182,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Gera código único de embarque
     const codigo = gerarCodigoEmbarque();
 
-    // Salva a compra no backend (para admin poder validar depois)
     const compra = {
       codigo,
       excursaoId: excursaoSelecionada.id,
@@ -214,7 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'Erro ao registrar compra');
 
-      // Monta mensagem do WhatsApp
       const total = Number(excursaoSelecionada.preco) * qtd;
       const msg = `
 🎫 *NOVA COMPRA - AHGA TURISMO*
@@ -242,12 +233,10 @@ Aguardo as instruções para pagamento via PIX. 🙏
       const url = `https://wa.me/${vendedorNumero}?text=${encodeURIComponent(msg)}`;
       window.open(url, '_blank');
 
-      // Guarda a compra para gerar cartão depois
       localStorage.setItem('ahga_ultima_compra', JSON.stringify(compra));
 
-      // Pergunta se quer ver o cartão
       setTimeout(() => {
-        if (confirm('Compra enviada! Deseja visualizar seu cartão de embarque agora?')) {
+        if (confirm('Compra enviada! O vendedor responderá com o link do seu cartão de embarque após confirmar o pagamento.\n\nDeseja visualizar uma prévia do cartão agora?')) {
           fecharCompra();
           mostrarCartaoEmbarque(compra);
         } else {
@@ -261,6 +250,88 @@ Aguardo as instruções para pagamento via PIX. 🙏
     }
   });
 });
+
+/* ============================================================
+   SOLICITAR CARTÃO DE EMBARQUE (via WhatsApp do vendedor)
+   ============================================================ */
+function abrirSolicitarCartao() {
+  const modal = document.getElementById('solicitarCartaoModal');
+  if (!modal) return;
+
+  const select = document.getElementById('solicitarVendedor');
+  if (select && select.options.length <= 1) {
+    WHATSAPP_NUMEROS.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.numero;
+      opt.textContent = `${v.nome} — ${v.cargo}`;
+      select.appendChild(opt);
+    });
+  }
+
+  document.getElementById('solicitarCPF').value = '';
+  document.getElementById('solicitarExcursao').value = '';
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => {
+    const input = document.getElementById('solicitarCPF');
+    if (input) input.focus();
+  }, 100);
+}
+
+function fecharSolicitarCartao() {
+  const modal = document.getElementById('solicitarCartaoModal');
+  if (!modal) return;
+  modal.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+async function enviarSolicitacaoCartao() {
+  const cpf = document.getElementById('solicitarCPF').value.trim();
+  const excursao = document.getElementById('solicitarExcursao').value.trim();
+  const vendedorNumero = document.getElementById('solicitarVendedor').value;
+
+  if (!cpf || cpf.length < 14) {
+    alert('Digite um CPF válido');
+    return;
+  }
+  if (!vendedorNumero) {
+    alert('Escolha um vendedor para enviar a solicitação');
+    return;
+  }
+
+  let infoExtra = '';
+  try {
+    const r = await fetch(`${API_URL_COMPRA}/api/compras?cpf=${encodeURIComponent(cpf)}`);
+    const data = await r.json();
+    const compras = data.compras || [];
+
+    if (compras.length > 0) {
+      infoExtra = `\n\n📋 *Compra(s) encontrada(s) no sistema:*`;
+      compras.forEach(c => {
+        infoExtra += `\n• ${c.excursaoTitulo} (${c.codigo}) — ${c.qtd} pessoa(s)`;
+      });
+    } else {
+      infoExtra = `\n\n⚠️ *Nenhuma compra encontrada com esse CPF no sistema.* Verifique se o cadastro está correto.`;
+    }
+  } catch (err) {
+    console.warn('Erro ao buscar compras:', err);
+  }
+
+  const msg = `
+🎫 *SOLICITAÇÃO DE CARTÃO DE EMBARQUE*
+
+*CPF:* ${cpf}
+${excursao ? `*Excursão:* ${excursao}` : ''}
+${infoExtra}
+
+Por favor, envie o link do meu cartão de embarque.
+Obrigado! 🙏
+  `.trim();
+
+  const url = `https://wa.me/${vendedorNumero}?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+  fecharSolicitarCartao();
+}
 
 /* ============================================================
    GERAÇÃO DE CÓDIGO ÚNICO
@@ -295,7 +366,6 @@ function mostrarCartaoEmbarque(compra) {
   document.getElementById('embQtd').textContent = compra.qtd + ' pessoa(s)';
   document.getElementById('embCodigo').textContent = compra.codigo;
 
-  // Gera o QR Code com os dados essenciais
   const qrData = JSON.stringify({
     codigo: compra.codigo,
     nome: compra.nome,
@@ -390,6 +460,15 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Não foi possível acessar a câmera. Verifique as permissões.');
     }
   });
+
+  // Máscara no campo de CPF da solicitação
+  const cpfSolic = document.getElementById('solicitarCPF');
+  if (cpfSolic) {
+    cpfSolic.addEventListener('input', e => e.target.value = mascaraCPF(e.target.value));
+    cpfSolic.addEventListener('keypress', e => {
+      if (e.key === 'Enter') { e.preventDefault(); enviarSolicitacaoCartao(); }
+    });
+  }
 });
 
 async function processarQRCode(texto) {
@@ -486,5 +565,8 @@ window.fecharEmbarque = fecharEmbarque;
 window.baixarCartao = baixarCartao;
 window.abrirLeitor = abrirLeitor;
 window.fecharLeitor = fecharLeitor;
+window.abrirSolicitarCartao = abrirSolicitarCartao;
+window.fecharSolicitarCartao = fecharSolicitarCartao;
+window.enviarSolicitacaoCartao = enviarSolicitacaoCartao;
 
 console.log('✅ compra.js carregado com sucesso');

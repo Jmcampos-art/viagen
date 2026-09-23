@@ -33,6 +33,25 @@
       z-index: 101;
       pointer-events: auto !important;
     }
+    .solicitar-cartao-box {
+      text-align: center;
+      margin: 2.5rem auto 1rem;
+      max-width: 500px;
+      background: linear-gradient(135deg, #fff0f5, #fff8e1);
+      border-radius: 1.5rem;
+      padding: 1.5rem;
+    }
+    .solicitar-cartao-box h3 {
+      color: var(--text);
+      font-size: 1.1rem;
+      margin-bottom: 0.4rem;
+    }
+    .solicitar-cartao-box h3 i { color: var(--ahga-rosa); }
+    .solicitar-cartao-box p {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      margin-bottom: 1rem;
+    }
   </style>
 </head>
 <body>
@@ -44,15 +63,12 @@
       <img src="logo.jpeg" alt="AHGA Turismo" class="logo-img">
     </a>
     <nav class="app-nav">
-      <!-- BUSCAR: só aparece para admin/vendedor logado -->
       <a href="#" class="app-nav-link admin-only" data-tab="buscar" style="display:none;" onclick="mudarAba(event, 'buscar')">
         <i class="fas fa-search"></i> Buscar
       </a>
-      <!-- EXCURSÕES: padrão para todos -->
       <a href="#" class="app-nav-link active" data-tab="excursoes" onclick="mudarAba(event, 'excursoes')">
         <i class="fas fa-suitcase-rolling"></i> Excursões
       </a>
-      <!-- GERENCIAR: só admin/vendedor -->
       <a href="#" class="app-nav-link admin-only" data-tab="gerenciar" style="display:none;" onclick="mudarAba(event, 'gerenciar')">
         <i class="fas fa-cog"></i> Gerenciar
       </a>
@@ -217,6 +233,15 @@
         <p>Carregando excursões...</p>
       </div>
     </div>
+
+    <!-- Bloco: Solicitar Cartão de Embarque -->
+    <div class="solicitar-cartao-box">
+      <h3><i class="fas fa-ticket-alt"></i> Já comprou sua excursão?</h3>
+      <p>Solicite ao vendedor o link do seu cartão de embarque</p>
+      <button class="btn-primary" onclick="abrirSolicitarCartao()" type="button">
+        <i class="fas fa-paper-plane"></i> Solicitar Cartão de Embarque
+      </button>
+    </div>
   </div>
 </div>
 
@@ -243,6 +268,23 @@
       <div class="empty-state">
         <i class="fas fa-circle-notch fa-spin"></i>
         <p>Carregando...</p>
+      </div>
+    </div>
+
+    <!-- Compras recentes -->
+    <div style="margin-top:2.5rem;">
+      <h3 style="font-size:1.15rem; margin-bottom:1rem; color:var(--text); display:flex; align-items:center; gap:0.5rem;">
+        <i class="fas fa-ticket-alt" style="color:var(--ahga-rosa);"></i>
+        Compras Recentes
+        <button class="btn-secondary small" onclick="carregarComprasAdmin()" style="margin-left:auto;">
+          <i class="fas fa-sync"></i> Atualizar
+        </button>
+      </h3>
+      <div id="adminComprasList" class="admin-list">
+        <div class="empty-state">
+          <i class="fas fa-circle-notch fa-spin"></i>
+          <p>Carregando compras...</p>
+        </div>
       </div>
     </div>
   </div>
@@ -431,6 +473,42 @@
         </button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- MODAL SOLICITAR CARTÃO -->
+<div class="modal-overlay" id="solicitarCartaoModal">
+  <div class="modal">
+    <button class="modal-close" onclick="fecharSolicitarCartao()" type="button">
+      <i class="fas fa-times"></i>
+    </button>
+    <h3><i class="fas fa-ticket-alt"></i> Solicitar Cartão de Embarque</h3>
+    <p class="modal-sub">Preencha os dados e enviaremos sua solicitação ao vendedor</p>
+
+    <div class="auth-field">
+      <label><i class="fas fa-id-card"></i> CPF *</label>
+      <input type="text" id="solicitarCPF" placeholder="000.000.000-00" maxlength="14" required>
+    </div>
+
+    <div class="auth-field">
+      <label><i class="fas fa-suitcase-rolling"></i> Excursão</label>
+      <input type="text" id="solicitarExcursao" placeholder="Nome da excursão (opcional)">
+      <small class="input-help"><i class="fas fa-info-circle"></i> Se não lembrar, deixe em branco</small>
+    </div>
+
+    <div class="auth-field">
+      <label><i class="fas fa-user-tie"></i> Enviar solicitação para *</label>
+      <select id="solicitarVendedor" required>
+        <option value="">Escolha o vendedor...</option>
+      </select>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" onclick="fecharSolicitarCartao()">Cancelar</button>
+      <button type="button" class="btn-primary" onclick="enviarSolicitacaoCartao()">
+        <i class="fab fa-whatsapp"></i> Enviar Solicitação
+      </button>
+    </div>
   </div>
 </div>
 

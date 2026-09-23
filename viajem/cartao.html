@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cartão de Embarque · AHGA Turismo</title>
+  <link rel="icon" type="image/png" href="logo.jpeg">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="config.js"></script>
+
+  <style>
+    body {
+      background: linear-gradient(145deg, #f8faff 0%, #eef2f9 100%);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    .cartao-page {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .cartao-page-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .cartao-page-header img {
+      height: 80px;
+      margin-bottom: 0.5rem;
+    }
+    .cartao-page-header h1 {
+      font-size: 1.3rem;
+      color: var(--text);
+    }
+    .cartao-page-header p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .loading, .erro {
+      background: white;
+      border-radius: 2rem;
+      padding: 3rem 2rem;
+      text-align: center;
+      box-shadow: 0 15px 35px -12px rgba(30, 43, 60, 0.15);
+    }
+    .loading i, .erro i {
+      font-size: 2.5rem;
+      color: var(--ahga-rosa);
+      margin-bottom: 1rem;
+    }
+    .erro i { color: var(--danger); }
+    .acoes {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+
+<div class="cartao-page">
+  <div class="cartao-page-header">
+    <img src="logo.jpeg" alt="AHGA Turismo">
+    <h1>Cartão de Embarque</h1>
+    <p>Apresente este QR Code no dia da excursão</p>
+  </div>
+
+  <div id="conteudo">
+    <div class="loading">
+      <i class="fas fa-circle-notch fa-spin"></i>
+      <p>Carregando seu cartão...</p>
+    </div>
+  </div>
+
+  <div class="acoes" id="acoes" style="display:none;">
+    <button class="btn-secondary" onclick="baixarCartao()">
+      <i class="fas fa-download"></i> Baixar QR
+    </button>
+    <button class="btn-primary" onclick="window.print()">
+      <i class="fas fa-print"></i> Imprimir
+    </button>
+  </div>
+</div>
+
+<script>
+  const API_URL = window.API_URL || 'http://localhost:3000';
+
+  function formatarDataBR(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso + 'T00:00:00');
+    if (isNaN(d)) return iso;
+    const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    return `${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  async function carregarCartao() {
+    const params = new URLSearchParams(window.location.search);
+    const codigo = params.get('codigo');
+    const conteudo = document.getElementById('conteudo');
+
+    if (!codigo) {
+      conteudo.innerHTML = `
+        <div class="erro">
+          <i class="fas fa-exclamation-triangle"></i>
+          <h3>Código não informado</h3>
+          <p>Este link está incompleto. Peça ao vendedor o link correto.</p>
+        </div>`;
+      return;
+    }
+
+    try {
+      const r = await fetch(`${API_URL}/api/compras/${codigo}`);
+      const data = await r.json();
+
+      if (!r.ok || !data.compra) {
+        conteudo.innerHTML = `
+          <div class="erro">
+            <i class="fas fa-times-circle"></i>
+            <h3>Compra não encontrada</h3>
+            <p>O código <strong>${codigo}</strong> não foi localizado no sistema.</p>
+          </div>`;
+        return;
+      }
+
+      const c = data.compra;
+
+      // Gera QR Code
+      const qrData = JSON.stringify({
+        codigo: c.codigo,
+        nome: c.nome,
+        cpf: c.cpf,
+        excursao: c.excursaoTitulo,
+        qtd: c.qtd,
+        total: c.total
+      });
+
+      conteudo.innerHTML = `
+        <div class="embarque-card">
+          <div class="embarque-header">
+            <img src="logo.jpeg" alt="AHGA" class="embarque-logo">
+            <div class="embarque-titulo">AHGA Turismo</div>
+          </div>
+          <div class="embarque-body">
+            <div class="embarque-info">
+              <div class="embarque-row"><span>Passageiro:</span><strong>${c.nome}</strong></div>
+              <div class="embarque-row"><span>RG:</span><strong>${c.rg || '—'}</strong></div>
+              <div class="embarque-row"><span>CPF:</span><strong>${c.cpf}</strong></div>
+              <div class="embarque-row"><span>Excursão:</span><strong>${c.excursaoTitulo}</strong></div>
+              <div class="embarque-row"><span>Destino:</span><strong>${c.excursaoDestino}</strong></div>
+              <div class="embarque-row"><span>Data:</span><strong>${formatarDataBR(c.excursaoData)}</strong></div>
+              <div class="embarque-row"><span>Pessoas:</span><strong>${c.qtd}</strong></div>
+              <div class="embarque-row"><span>Código:</span><strong>${c.codigo}</strong></div>
+              <div class="embarque-row"><span>Status:</span><strong>${c.status === 'utilizado' ? '✅ Utilizado' : '⏳ Pendente'}</strong></div>
+            </div>
+            <div class="embarque-qr">
+              <canvas id="qrcodeCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const canvas = document.getElementById('qrcodeCanvas');
+      QRCode.toCanvas(canvas, qrData, {
+        width: 200,
+        margin: 1,
+        color: { dark: '#1e2b3c', light: '#ffffff' }
+      });
+
+      document.getElementById('acoes').style.display = 'flex';
+    } catch (err) {
+      console.error(err);
+      conteudo.innerHTML = `
+        <div class="erro">
+          <i class="fas fa-exclamation-triangle"></i>
+          <h3>Erro ao carregar</h3>
+          <p>${err.message}</p>
+        </div>`;
+    }
+  }
+
+  function baixarCartao() {
+    const canvas = document.getElementById('qrcodeCanvas');
+    if (!canvas) return;
+    const link = document.createElement('a');
+    link.download = 'cartao-embarque-ahga.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
+  document.addEventListener('DOMContentLoaded', carregarCartao);
+</script>
+</body>
+</html>
