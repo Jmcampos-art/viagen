@@ -3,7 +3,7 @@
    ============================================================ */
 
 // 🔧 LOCAL (desenvolvimento):
-window.API_URL = 'http://localhost:3000';
+window.API_URL = 'https://viagen.onrender.com';
 
 // 🚀 PRODUÇÃO (Render):
 // window.API_URL = 'https://ahga-turismo.onrender.com';
