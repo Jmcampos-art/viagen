@@ -16,7 +16,6 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
   <style>
-    /* ===== CORREÇÃO CRÍTICA: modais não bloqueiam cliques quando fechados ===== */
     .modal-overlay {
       display: none !important;
       pointer-events: none !important;
@@ -27,13 +26,8 @@
       pointer-events: auto !important;
       z-index: 10000;
     }
-    .fullscreen-results {
-      z-index: 500;
-    }
-    .app-header {
-      z-index: 100;
-    }
-    /* Garante que botões dentro do header sempre clicáveis */
+    .fullscreen-results { z-index: 500; }
+    .app-header { z-index: 100; }
     .btn-login, .app-logout, .app-nav-link {
       position: relative;
       z-index: 101;
@@ -50,12 +44,15 @@
       <img src="logo.jpeg" alt="AHGA Turismo" class="logo-img">
     </a>
     <nav class="app-nav">
-      <a href="#" class="app-nav-link active" data-tab="buscar" onclick="mudarAba(event, 'buscar')">
+      <!-- BUSCAR: só aparece para admin/vendedor logado -->
+      <a href="#" class="app-nav-link admin-only" data-tab="buscar" style="display:none;" onclick="mudarAba(event, 'buscar')">
         <i class="fas fa-search"></i> Buscar
       </a>
-      <a href="#" class="app-nav-link" data-tab="excursoes" onclick="mudarAba(event, 'excursoes')">
+      <!-- EXCURSÕES: padrão para todos -->
+      <a href="#" class="app-nav-link active" data-tab="excursoes" onclick="mudarAba(event, 'excursoes')">
         <i class="fas fa-suitcase-rolling"></i> Excursões
       </a>
+      <!-- GERENCIAR: só admin/vendedor -->
       <a href="#" class="app-nav-link admin-only" data-tab="gerenciar" style="display:none;" onclick="mudarAba(event, 'gerenciar')">
         <i class="fas fa-cog"></i> Gerenciar
       </a>
@@ -78,8 +75,8 @@
   </div>
 </header>
 
-<!-- ABA: BUSCAR -->
-<div class="tab-content" id="tab-buscar">
+<!-- ABA: BUSCAR (só admin/vendedor) -->
+<div class="tab-content" id="tab-buscar" style="display:none;">
   <div class="container">
     <header class="header">
       <div class="logo">
@@ -204,8 +201,8 @@
   </div>
 </div>
 
-<!-- ABA: EXCURSÕES -->
-<div class="tab-content" id="tab-excursoes" style="display:none;">
+<!-- ABA: EXCURSÕES (padrão para clientes) -->
+<div class="tab-content" id="tab-excursoes">
   <div class="container">
     <header class="header">
       <div class="logo">
@@ -223,7 +220,7 @@
   </div>
 </div>
 
-<!-- ABA: GERENCIAR -->
+<!-- ABA: GERENCIAR (só admin/vendedor) -->
 <div class="tab-content" id="tab-gerenciar" style="display:none;">
   <div class="container">
     <header class="header">
@@ -379,7 +376,7 @@
 
     <form id="formCompra" class="auth-form">
       <input type="hidden" id="compraExcursaoId">
-      
+
       <div class="auth-field">
         <label><i class="fas fa-user"></i> Nome completo *</label>
         <input type="text" id="compraNome" placeholder="Seu nome completo" required>
@@ -417,8 +414,6 @@
         <textarea id="compraObs" rows="2" placeholder="Alguma observação?"></textarea>
       </div>
 
-      <div class="compra-resumo" id="compraResumo"></div>
-
       <div class="auth-field">
         <label><i class="fas fa-user-tie"></i> Falar com *</label>
         <select id="compraVendedor" required>
@@ -426,6 +421,9 @@
         </select>
         <small class="input-help"><i class="fas fa-info-circle"></i> A mensagem será enviada para o WhatsApp deste vendedor</small>
       </div>
+
+      <div class="compra-resumo" id="compraResumo"></div>
+
       <div class="form-actions">
         <button type="button" class="btn-secondary" onclick="fecharCompra()">Cancelar</button>
         <button type="submit" class="btn-primary" id="btnEnviarCompra">
@@ -568,18 +566,12 @@
   <div class="modal" id="modalContent"></div>
 </div>
 
-<!-- ============================================================
-     SCRIPTS — ordem correta
-     ============================================================ -->
 <script src="config.js"></script>
 <script src="admin.js"></script>
 <script src="compra.js"></script>
 <script src="script.js"></script>
 
-<!-- FALLBACK DE SEGURANÇA: se algum arquivo falhar, garante que os
-     botões principais não quebrem com "is not defined" -->
 <script>
-  // Fallbacks mínimos — só usados se o arquivo correspondente falhar
   window.abrirLogin    = window.abrirLogin    || function(){ console.warn('admin.js não carregou'); };
   window.fecharLogin   = window.fecharLogin   || function(){ const m=document.getElementById('loginModal'); if(m) m.classList.remove('active'); document.body.style.overflow=''; };
   window.mudarAba      = window.mudarAba      || function(){ console.warn('admin.js não carregou'); };

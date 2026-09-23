@@ -65,7 +65,7 @@ function isLogado() {
 }
 
 /* ============================================================
-   HEADER
+   HEADER — atualiza visibilidade de abas por tipo de usuário
    ============================================================ */
 function atualizarHeader() {
   const sessao = getSessao();
@@ -77,6 +77,7 @@ function atualizarHeader() {
   const avatarEl = document.getElementById('userAvatar');
 
   if (sessao) {
+    // ✅ LOGADO (admin/vendedor): mostra tudo
     if (btnLogin) btnLogin.style.display = 'none';
     if (userInfo) userInfo.style.display = 'flex';
     adminLinks.forEach(function(el) { el.style.display = ''; });
@@ -89,14 +90,10 @@ function atualizarHeader() {
       avatarEl.textContent = inicial;
     }
   } else {
+    // ❌ NÃO LOGADO (cliente): só excursões visíveis
     if (btnLogin) btnLogin.style.display = '';
     if (userInfo) userInfo.style.display = 'none';
     adminLinks.forEach(function(el) { el.style.display = 'none'; });
-
-    const gerenciar = document.getElementById('tab-gerenciar');
-    if (gerenciar && gerenciar.style.display !== 'none') {
-      mudarAba(null, 'buscar');
-    }
   }
 
   aplicarPermissoes();
@@ -111,12 +108,20 @@ function aplicarPermissoes() {
 }
 
 /* ============================================================
-   ABAS
+   ABAS — com trava de segurança para clientes
    ============================================================ */
 function mudarAba(e, aba) {
   if (e) e.preventDefault();
 
-  if (aba === 'gerenciar' && !isLogado()) {
+  const sessao = getSessao();
+
+  // 🔒 Trava: cliente só pode ver "excursoes"
+  if (!sessao && aba !== 'excursoes') {
+    aba = 'excursoes';
+  }
+
+  // 🔒 Trava extra: se não estiver logado e tentar "gerenciar"
+  if (aba === 'gerenciar' && !sessao) {
     abrirLogin();
     return;
   }
@@ -145,7 +150,8 @@ function mudarAba(e, aba) {
 
 function irParaHome(e) {
   if (e) e.preventDefault();
-  mudarAba(null, 'buscar');
+  // Se logado vai pra Buscar, se cliente vai pra Excursões
+  mudarAba(null, isLogado() ? 'buscar' : 'excursoes');
 }
 
 /* ============================================================
@@ -452,6 +458,13 @@ document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 admin.js inicializado');
   atualizarHeader();
 
+  // ✅ Define a aba inicial baseada no login
+  if (isLogado()) {
+    mudarAba(null, 'buscar'); // Admin/vendedor começa em Buscar
+  } else {
+    mudarAba(null, 'excursoes'); // Cliente começa em Excursões
+  }
+
   const formLogin = document.getElementById('formLoginAdmin');
   if (formLogin) {
     formLogin.addEventListener('submit', function(e) {
@@ -552,7 +565,7 @@ document.addEventListener('DOMContentLoaded', function() {
     btnLogout.addEventListener('click', function() {
       setSessao(null);
       atualizarHeader();
-      mudarAba(null, 'buscar');
+      mudarAba(null, 'excursoes');
     });
   }
 

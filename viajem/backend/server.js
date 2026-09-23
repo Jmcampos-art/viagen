@@ -3,7 +3,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import Groq from 'groq-sdk';
 import authRoutes, { exigirLogin } from './auth.js';
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -11,6 +10,7 @@ import {
   getPaisesDisponiveis,
   sortearCidades
 } from './cidades.js';
+import { conectarDB, getDB } from './db.js';
 
 dotenv.config();
 
@@ -67,7 +67,6 @@ async function buscarImagemCidade(nomeCidade, pontoTuristico = '') {
           if (imageInfo?.thumburl) {
             const imgUrl = imageInfo.thumburl;
             if (imgUrl.match(/\.(jpg|jpeg|png|webp)/i) || imgUrl.includes('/thumb/')) {
-              console.log(`✅ Wikimedia: "${query}"`);
               imageCache.set(cacheKey, imgUrl);
               return imgUrl;
             }
@@ -75,7 +74,6 @@ async function buscarImagemCidade(nomeCidade, pontoTuristico = '') {
         }
       }
     } catch (error) {
-      console.log(`⚠️ Erro Wikimedia:`, error.message);
       continue;
     }
   }
@@ -311,7 +309,7 @@ const REGIOES_PAISES = {
   america_sul: ['argentina','chile','uruguai','paraguai','peru','bolivia','equador','colombia','venezuela','guiana','suriname'],
   america_central: ['panama','panamá','costa rica','nicarágua','honduras','guatemala','el salvador','belize','méxico','mexico','cuba','república dominicana','jamaica','porto rico','bahamas','cancún','cancun'],
   america_norte: ['estados unidos','eua','canadá','canada'],
-  europa: ['portugal','espanha','frança','franca','itália','italia','alemanha','inglaterra','reino unido','irlanda','holanda','bélgica','belgica','suíça','suica','áustria','austria','grécia','grecia','noruega','suécia','suecia','dinamarca','finlândia','finlandia','polônia','polonia','república tcheca','hungria','croácia','croacia','romênia','romenia','bulgária','bulgaria','rússia','russia','ucrânia','ucrania','turquia','islandia','islândia','escócia','escocia','país de gales','malta','chipre','estônia','estonia','letônia','letonia','lituânia','lituania','eslovênia','eslovenia','eslováquia','eslovaquia','sérvia','servia','bósnia','bosnia','albania','albânia'],
+  europa: ['portugal','espanha','frança','franca','itália','italia','alemanha','inglaterra','reino unido','irlanda','holanda','bélgica','belgica','suíça','suica','áustria','austria','grécia','grecia','noruega','suécia','suecia','dinamarca','finlândia','finlandia','polônia','polonia','república tcheca','hungria','croácia','croacia','romênia','romenia','bulgária','bulgaria','rússia','russia','ucrânia','ucrania','turquia','islandia','islândia','escócia','escocia','país de gales','malta','chipre','estônia','estonia','letônia','letonia','lituânia','lituania','eslovênia','eslovenia','eslováquia','eslov aquia','sérvia','servia','bósnia','bosnia','albania','albânia'],
   africa: ['marrocos','egito','áfrica do sul','africa do sul','tunísia','tunisia','argélia','argelia','quênia','quenia','tanzânia','tanzania','nigéria','nigeria','gana','senegal','etiópia','etiopia','ruanda','uganda','zâmbia','zambia','zimbábue','zimbabue','moçambique','mocambique','namíbia','namibia','botsuana','madagascar','maurício','mauricio','seicheles','cabo verde'],
   asia: ['japão','japao','china','coreia do sul','coreia do norte','tailândia','tailandia','vietnã','vietna','indonésia','indonesia','índia','india','malásia','malasia','singapura','filipinas','emirados árabes','emirados árabes unidos','emirados','israel','catar','qatar','arábia saudita','arabia saudita','jordânia','jordania','líbano','libano','sri lanka','nepal','paquistão','paquistao','bangladesh','myanmar','camboja','laos','mongólia','mongolia','cazaquistão','cazaquistao','uzbequistão','uzbequistao','armênia','armenia','geórgia','georgia','azerbaijão','azerbaijao','bahrein','kuwait','omã','oma','maldivas'],
   oceania: ['austrália','australia','nova zelândia','nova zelandia','fiji','papua nova guiné','papua nova guine','samoa','tonga','taiti','nova caledônia','nova caledonia']
@@ -549,6 +547,7 @@ app.get('/api/status', (req, res) => {
     cidadesBR: Object.keys(CIDADES_BR).length,
     paises: getPaisesDisponiveis().length,
     imagensCache: imageCache.size,
+    mongoDB: getDB() ? '✅ Conectado' : '❌ Desconectado',
     googleOAuth: process.env.GOOGLE_CLIENT_ID ? '✅ Configurado' : '❌ Não configurado'
   });
 });
@@ -607,9 +606,7 @@ app.get('/test-precos', (req, res) => {
     regiao: getRegiaoPais(pais),
     internacional: isDestinoInternacional(pais),
     precoOnibusIdaVolta: `R$ ${precoOnibus.toLocaleString('pt-BR')}`,
-    precoVooIdaVolta: `R$ ${precoVoo.toLocaleString('pt-BR')}`,
-    tabelaOnibus: TABELA_ONIBUS,
-    tabelaVoo: TABELA_VOO
+    precoVooIdaVolta: `R$ ${precoVoo.toLocaleString('pt-BR')}`
   });
 });
 
@@ -619,7 +616,6 @@ app.get('/test-precos', (req, res) => {
 app.post('/api/search-destination', async (req, res) => {
   try {
     const { query, origin, date, climate, budget, budgetRaw, nights } = req.body;
-    const orcamento = parseInt(budgetRaw) || 0;
     const noites = parseInt(nights) || 4;
 
     if (!query || query.trim().length < 2) {
@@ -905,207 +901,227 @@ Retorne JSON puro:
 });
 
 /* ============================================================
-   EXCURSÕES
+   EXCURSÕES — MongoDB Atlas
    ============================================================ */
+const ADMIN_HEADER_KEY = 'true';
 
-   const EXCURSOES_PATH = path.join(__dirname, 'excursoes.json');
-   const ADMIN_HEADER_KEY = 'true'; // valor esperado no header X-Admin-Auth
-   
-   function lerExcursoes() {
-     if (!fs.existsSync(EXCURSOES_PATH)) return [];
-     try { return JSON.parse(fs.readFileSync(EXCURSOES_PATH, 'utf-8')); }
-     catch { return []; }
-   }
-   function salvarExcursoes(lista) {
-     fs.writeFileSync(EXCURSOES_PATH, JSON.stringify(lista, null, 2), 'utf-8');
-   }
-   
-   /* Middleware: exige header de admin */
-   function exigirAdminHeader(req, res, next) {
-     if (req.headers['x-admin-auth'] !== ADMIN_HEADER_KEY) {
-       return res.status(403).json({ error: 'Acesso restrito a administradores' });
-     }
-     next();
-   }
-   
-   /* GET público — listar */
-   app.get('/api/excursoes', (req, res) => {
-     const lista = lerExcursoes().sort((a, b) =>
-       new Date(b.criadoEm) - new Date(a.criadoEm)
-     );
-     res.json({ excursoes: lista });
-   });
-   
-   /* GET público — uma */
-   app.get('/api/excursoes/:id', (req, res) => {
-     const lista = lerExcursoes();
-     const item = lista.find(e => e.id === req.params.id);
-     if (!item) return res.status(404).json({ error: 'Excursão não encontrada' });
-     res.json({ excursao: item });
-   });
-   
-   /* POST admin — criar */
-   app.post('/api/excursoes', exigirAdminHeader, (req, res) => {
-     const {
-       titulo, destino, descricao, imagem, dataIda, dataVolta,
-       preco, vagas, inclui, roteiro, categoria
-     } = req.body;
-   
-     if (!titulo || !destino || !dataIda || !preco) {
-       return res.status(400).json({ error: 'Título, destino, data de ida e preço são obrigatórios' });
-     }
-   
-     const nova = {
-       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-       titulo,
-       destino,
-       descricao: descricao || '',
-       imagem: imagem || '',
-       dataIda,
-       dataVolta: dataVolta || '',
-       preco: Number(preco),
-       vagas: Number(vagas) || 0,
-       inclui: Array.isArray(inclui) ? inclui : [],
-       roteiro: Array.isArray(roteiro) ? roteiro : [],
-       categoria: categoria || 'Geral',
-       criadoEm: new Date().toISOString(),
-       atualizadoEm: new Date().toISOString()
-     };
-   
-     const lista = lerExcursoes();
-     lista.push(nova);
-     salvarExcursoes(lista);
-   
-     console.log(`📦 Excursão criada: ${nova.titulo}`);
-     res.status(201).json({ excursao: nova });
-   });
-   
-   /* PUT admin — editar */
-   app.put('/api/excursoes/:id', exigirAdminHeader, (req, res) => {
-     const lista = lerExcursoes();
-     const idx = lista.findIndex(e => e.id === req.params.id);
-     if (idx === -1) return res.status(404).json({ error: 'Excursão não encontrada' });
-   
-     const atual = lista[idx];
-     const campos = ['titulo', 'destino', 'descricao', 'imagem', 'dataIda', 'dataVolta', 'preco', 'vagas', 'inclui', 'roteiro', 'categoria'];
-     campos.forEach(c => {
-       if (req.body[c] !== undefined) atual[c] = req.body[c];
-     });
-     if (req.body.preco !== undefined) atual.preco = Number(req.body.preco);
-     if (req.body.vagas !== undefined) atual.vagas = Number(req.body.vagas);
-     atual.atualizadoEm = new Date().toISOString();
-   
-     lista[idx] = atual;
-     salvarExcursoes(lista);
-     console.log(`✏️ Excursão editada: ${atual.titulo}`);
-     res.json({ excursao: atual });
-   });
-   
-   /* DELETE admin — excluir */
-   app.delete('/api/excursoes/:id', exigirAdminHeader, (req, res) => {
-     const lista = lerExcursoes();
-     const idx = lista.findIndex(e => e.id === req.params.id);
-     if (idx === -1) return res.status(404).json({ error: 'Excursão não encontrada' });
-     const removida = lista.splice(idx, 1)[0];
-     salvarExcursoes(lista);
-     console.log(`🗑️ Excursão removida: ${removida.titulo}`);
-     res.json({ ok: true });
-   });
+function exigirAdminHeader(req, res, next) {
+  if (req.headers['x-admin-auth'] !== ADMIN_HEADER_KEY) {
+    return res.status(403).json({ error: 'Acesso restrito a administradores' });
+  }
+  next();
+}
+
+/* GET público — listar */
+app.get('/api/excursoes', async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.json({ excursoes: [] });
+
+    const lista = await db.collection('excursoes')
+      .find({})
+      .sort({ criadoEm: -1 })
+      .toArray();
+
+    res.json({ excursoes: lista });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao listar' });
+  }
+});
+
+/* GET público — uma */
+app.get('/api/excursoes/:id', async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.status(404).json({ error: 'Não encontrada' });
+
+    const item = await db.collection('excursoes').findOne({ id: req.params.id });
+    if (!item) return res.status(404).json({ error: 'Excursão não encontrada' });
+    res.json({ excursao: item });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* POST admin — criar */
+app.post('/api/excursoes', exigirAdminHeader, async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.status(500).json({ error: 'Banco não conectado' });
+
+    const { titulo, destino, descricao, imagem, dataIda, dataVolta, preco, vagas, inclui, roteiro, categoria, criadoPor } = req.body;
+
+    if (!titulo || !destino || !dataIda || !preco) {
+      return res.status(400).json({ error: 'Título, destino, data de ida e preço são obrigatórios' });
+    }
+
+    const nova = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      titulo, destino,
+      descricao: descricao || '',
+      imagem: imagem || '',
+      dataIda,
+      dataVolta: dataVolta || '',
+      preco: Number(preco),
+      vagas: Number(vagas) || 0,
+      inclui: Array.isArray(inclui) ? inclui : [],
+      roteiro: Array.isArray(roteiro) ? roteiro : [],
+      categoria: categoria || 'Geral',
+      criadoPor: criadoPor || '—',
+      criadoEm: new Date().toISOString(),
+      atualizadoEm: new Date().toISOString()
+    };
+
+    await db.collection('excursoes').insertOne(nova);
+    console.log(`📦 Excursão criada: ${nova.titulo}`);
+    res.status(201).json({ excursao: nova });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* PUT admin — editar */
+app.put('/api/excursoes/:id', exigirAdminHeader, async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.status(500).json({ error: 'Banco não conectado' });
+
+    const campos = ['titulo', 'destino', 'descricao', 'imagem', 'dataIda', 'dataVolta', 'preco', 'vagas', 'inclui', 'roteiro', 'categoria'];
+    const update = { atualizadoEm: new Date().toISOString() };
+    campos.forEach(c => {
+      if (req.body[c] !== undefined) update[c] = req.body[c];
+    });
+    if (req.body.preco !== undefined) update.preco = Number(req.body.preco);
+    if (req.body.vagas !== undefined) update.vagas = Number(req.body.vagas);
+
+    const result = await db.collection('excursoes').updateOne(
+      { id: req.params.id },
+      { $set: update }
+    );
+
+    if (result.matchedCount === 0) return res.status(404).json({ error: 'Excursão não encontrada' });
+
+    const atualizada = await db.collection('excursoes').findOne({ id: req.params.id });
+    res.json({ excursao: atualizada });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* DELETE admin — excluir */
+app.delete('/api/excursoes/:id', exigirAdminHeader, async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.status(500).json({ error: 'Banco não conectado' });
+
+    const result = await db.collection('excursoes').deleteOne({ id: req.params.id });
+    if (result.deletedCount === 0) return res.status(404).json({ error: 'Excursão não encontrada' });
+
+    console.log(`🗑️ Excursão removida: ${req.params.id}`);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* ============================================================
-   COMPRAS DE EXCURSÕES
+   COMPRAS — MongoDB Atlas
    ============================================================ */
-const COMPRAS_PATH = path.join(__dirname, 'compras.json');
+app.post('/api/compras', async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.status(500).json({ error: 'Banco não conectado' });
 
-function lerCompras() {
-  if (!fs.existsSync(COMPRAS_PATH)) return [];
-  try { return JSON.parse(fs.readFileSync(COMPRAS_PATH, 'utf-8')); }
-  catch { return []; }
-}
-function salvarCompras(lista) {
-  fs.writeFileSync(COMPRAS_PATH, JSON.stringify(lista, null, 2), 'utf-8');
-}
+    const { codigo, nome, cpf, excursaoId } = req.body;
+    if (!codigo || !nome || !cpf || !excursaoId) {
+      return res.status(400).json({ error: 'Dados incompletos' });
+    }
 
-/* POST — registrar nova compra (público) */
-app.post('/api/compras', (req, res) => {
-  const { codigo, excursaoId, excursaoTitulo, excursaoDestino, excursaoData, nome, rg, cpf, telefone, email, obs, qtd, total } = req.body;
+    const existe = await db.collection('compras').findOne({ codigo });
+    if (existe) return res.status(409).json({ error: 'Código já existe' });
 
-  if (!codigo || !nome || !cpf || !excursaoId) {
-    return res.status(400).json({ error: 'Dados incompletos' });
+    const nova = {
+      ...req.body,
+      qtd: Number(req.body.qtd) || 1,
+      total: Number(req.body.total) || 0,
+      status: 'pendente',
+      criadoEm: new Date().toISOString()
+    };
+
+    await db.collection('compras').insertOne(nova);
+    console.log(`🎫 Compra registrada: ${codigo} - ${nome}`);
+    res.status(201).json({ compra: nova });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
+});
 
-  const lista = lerCompras();
-  if (lista.find(c => c.codigo === codigo)) {
-    return res.status(409).json({ error: 'Código já existe' });
+app.get('/api/compras/:codigo', async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.status(404).json({ error: 'Banco não conectado' });
+
+    const compra = await db.collection('compras').findOne({ codigo: req.params.codigo });
+    if (!compra) return res.status(404).json({ error: 'Compra não encontrada' });
+    res.json({ compra });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  const nova = {
-    codigo,
-    excursaoId,
-    excursaoTitulo,
-    excursaoDestino,
-    excursaoData,
-    nome, rg, cpf, telefone, email, obs,
-    qtd: Number(qtd) || 1,
-    total: Number(total) || 0,
-    status: 'pendente',
-    criadoEm: new Date().toISOString()
-  };
-
-  lista.push(nova);
-  salvarCompras(lista);
-  console.log(`🎫 Compra registrada: ${codigo} - ${nome}`);
-  res.status(201).json({ compra: nova });
 });
 
-/* GET — buscar compra por código (usado pelo leitor) */
-app.get('/api/compras/:codigo', (req, res) => {
-  const lista = lerCompras();
-  const compra = lista.find(c => c.codigo === req.params.codigo);
-  if (!compra) return res.status(404).json({ error: 'Compra não encontrada' });
-  res.json({ compra });
-});
+app.post('/api/compras/:codigo/validar', async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.status(500).json({ error: 'Banco não conectado' });
 
-/* POST — validar (marcar como utilizado) */
-app.post('/api/compras/:codigo/validar', (req, res) => {
-  const lista = lerCompras();
-  const idx = lista.findIndex(c => c.codigo === req.params.codigo);
-  if (idx === -1) return res.status(404).json({ error: 'Compra não encontrada' });
+    const compra = await db.collection('compras').findOne({ codigo: req.params.codigo });
+    if (!compra) return res.status(404).json({ error: 'Compra não encontrada' });
 
-  if (lista[idx].status === 'utilizado') {
-    return res.status(400).json({ error: 'Já utilizado', utilizadoEm: lista[idx].utilizadoEm });
+    if (compra.status === 'utilizado') {
+      return res.status(400).json({ error: 'Já utilizado', utilizadoEm: compra.utilizadoEm });
+    }
+
+    await db.collection('compras').updateOne(
+      { codigo: req.params.codigo },
+      { $set: { status: 'utilizado', utilizadoEm: new Date().toISOString() } }
+    );
+
+    const atualizada = await db.collection('compras').findOne({ codigo: req.params.codigo });
+    console.log(`✅ Embarque validado: ${req.params.codigo}`);
+    res.json({ ok: true, compra: atualizada });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  lista[idx].status = 'utilizado';
-  lista[idx].utilizadoEm = new Date().toISOString();
-  salvarCompras(lista);
-
-  console.log(`✅ Embarque validado: ${lista[idx].codigo} - ${lista[idx].nome}`);
-  res.json({ ok: true, compra: lista[idx] });
 });
 
-/* GET admin — listar todas as compras */
-app.get('/api/compras', (req, res) => {
-  res.json({ compras: lerCompras().sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm)) });
+app.get('/api/compras', async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.json({ compras: [] });
+
+    const lista = await db.collection('compras')
+      .find({})
+      .sort({ criadoEm: -1 })
+      .toArray();
+
+    res.json({ compras: lista });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
+
+/* ============================================================
+   CONECTA AO MONGODB E SOBE O SERVIDOR
+   ============================================================ */
+await conectarDB();
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Servidor AHGA Turismo rodando em http://localhost:${PORT}`);
   console.log(`🗺️  Cidades BR: ${Object.keys(CIDADES_BR).length}`);
   console.log(`🌍 Países: ${getPaisesDisponiveis().length}`);
   console.log(`🔐 Google OAuth: ${process.env.GOOGLE_CLIENT_ID ? '✅ Configurado' : '❌ Não configurado'}`);
-  console.log(`\n🚌 TABELA DE ÔNIBUS (ida/volta):`);
-  console.log(`   Mesmo estado:    R$ ${TABELA_ONIBUS.mesmo_estado.min}–${TABELA_ONIBUS.mesmo_estado.max}`);
-  console.log(`   Curta distância: R$ ${TABELA_ONIBUS.curta_distancia.min}–${TABELA_ONIBUS.curta_distancia.max}`);
-  console.log(`   Média distância: R$ ${TABELA_ONIBUS.media_distancia.min}–${TABELA_ONIBUS.media_distancia.max}`);
-  console.log(`   Longa distância: R$ ${TABELA_ONIBUS.longa_distancia.min}–${TABELA_ONIBUS.longa_distancia.max}`);
-  console.log(`   INTERNACIONAL:   R$ ${TABELA_ONIBUS.internacional.min}–${TABELA_ONIBUS.internacional.max}`);
-  console.log(`\n✈️  TABELA DE VOOS (ida/volta):`);
-  console.log(`   Brasil:           R$ ${TABELA_VOO.brasil.min}–${TABELA_VOO.brasil.max}`);
-  console.log(`   América do Sul:   R$ ${TABELA_VOO.america_sul.min}–${TABELA_VOO.america_sul.max}`);
-  console.log(`   América Central:  R$ ${TABELA_VOO.america_central.min}–${TABELA_VOO.america_central.max}`);
-  console.log(`   América do Norte: R$ ${TABELA_VOO.america_norte.min}–${TABELA_VOO.america_norte.max}`);
-  console.log(`   Europa:           R$ ${TABELA_VOO.europa.min}–${TABELA_VOO.europa.max}`);
-  console.log(`   África:           R$ ${TABELA_VOO.africa.min}–${TABELA_VOO.africa.max}`);
-  console.log(`   Ásia:             R$ ${TABELA_VOO.asia.min}–${TABELA_VOO.asia.max}`);
-  console.log(`   Oceania:          R$ ${TABELA_VOO.oceania.min}–${TABELA_VOO.oceania.max}`);
+  console.log(`💾 MongoDB: ${getDB() ? '✅ Conectado' : '❌ Desconectado'}`);
 });
