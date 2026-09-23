@@ -12,16 +12,38 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 
-  <!-- QR Code Generator -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <!-- QR Code Reader -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    /* ===== CORREÇÃO CRÍTICA: modais não bloqueiam cliques quando fechados ===== */
+    .modal-overlay {
+      display: none !important;
+      pointer-events: none !important;
+      z-index: 9999;
+    }
+    .modal-overlay.active {
+      display: flex !important;
+      pointer-events: auto !important;
+      z-index: 10000;
+    }
+    .fullscreen-results {
+      z-index: 500;
+    }
+    .app-header {
+      z-index: 100;
+    }
+    /* Garante que botões dentro do header sempre clicáveis */
+    .btn-login, .app-logout, .app-nav-link {
+      position: relative;
+      z-index: 101;
+      pointer-events: auto !important;
+    }
+  </style>
 </head>
 <body>
 
-<!-- ============================================================
-     HEADER GLOBAL
-     ============================================================ -->
+<!-- HEADER GLOBAL -->
 <header class="app-header">
   <div class="app-header-inner">
     <a href="#" class="app-logo" onclick="irParaHome(event)">
@@ -39,7 +61,7 @@
       </a>
     </nav>
     <div class="app-user">
-      <button class="btn-login" id="btnLogin" onclick="abrirLogin()">
+      <button class="btn-login" id="btnLogin" onclick="abrirLogin()" type="button">
         <i class="fas fa-user-shield"></i> Entrar
       </button>
       <div class="app-user-info" id="userInfo" style="display:none;">
@@ -48,7 +70,7 @@
           <span class="user-cargo" id="userCargoDisplay">—</span>
         </div>
         <div class="app-user-avatar" id="userAvatar">A</div>
-        <button class="app-logout" id="logoutBtn" title="Sair">
+        <button class="app-logout" id="logoutBtn" title="Sair" type="button">
           <i class="fas fa-sign-out-alt"></i>
         </button>
       </div>
@@ -56,9 +78,7 @@
   </div>
 </header>
 
-<!-- ============================================================
-     ABA: BUSCAR
-     ============================================================ -->
+<!-- ABA: BUSCAR -->
 <div class="tab-content" id="tab-buscar">
   <div class="container">
     <header class="header">
@@ -165,12 +185,12 @@
         </div>
       </div>
 
-      <button class="search-btn" id="searchBtn">
+      <button class="search-btn" id="searchBtn" type="button">
         <i class="fas fa-search"></i> Buscar viagens
       </button>
 
       <div class="ai-panel">
-        <button class="ai-btn" id="aiBtn">
+        <button class="ai-btn" id="aiBtn" type="button">
           <i class="fas fa-wand-magic-sparkles"></i> Gerar roteiro completo com IA
         </button>
         <p class="ai-hint">A IA cria uma viagem inteira: múltiplos destinos, dias em cada lugar e roteiro dia a dia.</p>
@@ -184,9 +204,7 @@
   </div>
 </div>
 
-<!-- ============================================================
-     ABA: EXCURSÕES
-     ============================================================ -->
+<!-- ABA: EXCURSÕES -->
 <div class="tab-content" id="tab-excursoes" style="display:none;">
   <div class="container">
     <header class="header">
@@ -205,9 +223,7 @@
   </div>
 </div>
 
-<!-- ============================================================
-     ABA: GERENCIAR
-     ============================================================ -->
+<!-- ABA: GERENCIAR -->
 <div class="tab-content" id="tab-gerenciar" style="display:none;">
   <div class="container">
     <header class="header">
@@ -218,10 +234,10 @@
     </header>
 
     <div class="admin-actions">
-      <button class="btn-secondary" onclick="abrirLeitor()">
+      <button class="btn-secondary" onclick="abrirLeitor()" type="button">
         <i class="fas fa-qrcode"></i> Validar Embarque
       </button>
-      <button class="btn-primary" onclick="abrirFormExcursao()">
+      <button class="btn-primary" onclick="abrirFormExcursao()" type="button">
         <i class="fas fa-plus"></i> Nova excursão
       </button>
     </div>
@@ -235,19 +251,17 @@
   </div>
 </div>
 
-<!-- ============================================================
-     MODAL LOGIN
-     ============================================================ -->
+<!-- MODAL LOGIN -->
 <div class="modal-overlay" id="loginModal">
   <div class="modal login-modal">
-    <button class="modal-close" onclick="fecharLogin()"><i class="fas fa-times"></i></button>
+    <button class="modal-close" onclick="fecharLogin()" type="button"><i class="fas fa-times"></i></button>
     <div class="login-header">
       <img src="logo.jpeg" alt="AHGA" class="login-logo">
       <h2 class="login-title">Acesso Restrito</h2>
       <p class="login-sub">Área exclusiva da equipe AHGA Turismo</p>
     </div>
 
-    <form id="formLoginAdmin" class="auth-form">
+    <form id="formLoginAdmin" class="auth-form" autocomplete="off">
       <div class="auth-field">
         <label><i class="fas fa-user"></i> Usuário</label>
         <input type="text" id="adminUser" placeholder="Digite seu usuário" required autocomplete="off">
@@ -270,12 +284,10 @@
   </div>
 </div>
 
-<!-- ============================================================
-     MODAL EXCURSÃO
-     ============================================================ -->
+<!-- MODAL EXCURSÃO -->
 <div class="modal-overlay" id="excursaoModal">
   <div class="modal excursao-modal">
-    <button class="modal-close" onclick="fecharFormExcursao()"><i class="fas fa-times"></i></button>
+    <button class="modal-close" onclick="fecharFormExcursao()" type="button"><i class="fas fa-times"></i></button>
     <h3><i class="fas fa-suitcase-rolling"></i> <span id="excursaoFormTitle">Nova excursão</span></h3>
     <p class="modal-sub">Preencha os dados. Campos com * são obrigatórios.</p>
 
@@ -358,12 +370,10 @@
   </div>
 </div>
 
-<!-- ============================================================
-     MODAL DE COMPRA DE EXCURSÃO
-     ============================================================ -->
+<!-- MODAL DE COMPRA -->
 <div class="modal-overlay" id="compraModal">
   <div class="modal compra-modal">
-    <button class="modal-close" onclick="fecharCompra()"><i class="fas fa-times"></i></button>
+    <button class="modal-close" onclick="fecharCompra()" type="button"><i class="fas fa-times"></i></button>
     <h3><i class="fas fa-ticket-alt"></i> Comprar excursão</h3>
     <p class="modal-sub" id="compraExcursaoNome">—</p>
 
@@ -419,12 +429,10 @@
   </div>
 </div>
 
-<!-- ============================================================
-     MODAL DO CARTÃO DE EMBARQUE (com QR Code)
-     ============================================================ -->
+<!-- MODAL CARTÃO DE EMBARQUE -->
 <div class="modal-overlay" id="embarqueModal">
   <div class="modal embarque-modal">
-    <button class="modal-close" onclick="fecharEmbarque()"><i class="fas fa-times"></i></button>
+    <button class="modal-close" onclick="fecharEmbarque()" type="button"><i class="fas fa-times"></i></button>
     <h3><i class="fas fa-plane-departure"></i> Cartão de Embarque</h3>
     <p class="modal-sub">Apresente este QR Code no embarque</p>
 
@@ -461,12 +469,10 @@
   </div>
 </div>
 
-<!-- ============================================================
-     MODAL LEITOR DE QR CODE (ADMIN)
-     ============================================================ -->
+<!-- MODAL LEITOR QR (ADMIN) -->
 <div class="modal-overlay" id="leitorModal">
   <div class="modal leitor-modal">
-    <button class="modal-close" onclick="fecharLeitor()"><i class="fas fa-times"></i></button>
+    <button class="modal-close" onclick="fecharLeitor()" type="button"><i class="fas fa-times"></i></button>
     <h3><i class="fas fa-qrcode"></i> Leitor de Cartão de Embarque</h3>
     <p class="modal-sub">Aponte a câmera para o QR Code do passageiro</p>
 
@@ -482,18 +488,16 @@
   </div>
 </div>
 
-<!-- ============================================================
-     TELAS FULLSCREEN
-     ============================================================ -->
+<!-- TELAS FULLSCREEN -->
 <div class="fullscreen-results" id="resultsScreen">
   <div class="fullscreen-header">
     <div class="fullscreen-header-left">
-      <button class="back-btn" id="backBtn"><i class="fas fa-arrow-left"></i> Voltar</button>
+      <button class="back-btn" id="backBtn" type="button"><i class="fas fa-arrow-left"></i> Voltar</button>
       <h2 id="resultsScreenTitle"><i class="fas fa-suitcase-rolling"></i> Resultados da busca</h2>
     </div>
     <div class="fullscreen-header-right">
       <span class="badge-info" id="resultCount">0 destinos</span>
-      <button class="ai-btn small" id="aiBtnFull"><i class="fas fa-wand-magic-sparkles"></i> Roteiro IA</button>
+      <button class="ai-btn small" id="aiBtnFull" type="button"><i class="fas fa-wand-magic-sparkles"></i> Roteiro IA</button>
     </div>
   </div>
   <div class="fullscreen-filters">
@@ -512,7 +516,7 @@
 <div class="fullscreen-results packages-screen" id="packagesScreen">
   <div class="fullscreen-header">
     <div class="fullscreen-header-left">
-      <button class="back-btn" id="backFromPackages"><i class="fas fa-arrow-left"></i> Voltar</button>
+      <button class="back-btn" id="backFromPackages" type="button"><i class="fas fa-arrow-left"></i> Voltar</button>
       <h2><i class="fas fa-tags"></i> Pacotes para <span id="packagesDestName">—</span></h2>
     </div>
     <div class="fullscreen-header-right">
@@ -521,11 +525,11 @@
   </div>
   <div class="packages-summary" id="packagesSummary"></div>
   <div class="packages-tabs">
-    <button class="tab-btn active" data-tab="all"><i class="fas fa-list"></i> Tudo</button>
-    <button class="tab-btn" data-tab="flights"><i class="fas fa-plane"></i> Voos</button>
-    <button class="tab-btn" data-tab="bus"><i class="fas fa-bus"></i> Ônibus</button>
-    <button class="tab-btn" data-tab="hotels"><i class="fas fa-hotel"></i> Hotéis</button>
-    <button class="tab-btn" data-tab="packages"><i class="fas fa-box-open"></i> Pacotes</button>
+    <button class="tab-btn active" data-tab="all" type="button"><i class="fas fa-list"></i> Tudo</button>
+    <button class="tab-btn" data-tab="flights" type="button"><i class="fas fa-plane"></i> Voos</button>
+    <button class="tab-btn" data-tab="bus" type="button"><i class="fas fa-bus"></i> Ônibus</button>
+    <button class="tab-btn" data-tab="hotels" type="button"><i class="fas fa-hotel"></i> Hotéis</button>
+    <button class="tab-btn" data-tab="packages" type="button"><i class="fas fa-box-open"></i> Pacotes</button>
   </div>
   <div class="fullscreen-body">
     <div class="offers-list" id="offersContainer"></div>
@@ -535,11 +539,11 @@
 <div class="fullscreen-results itinerary-screen" id="itineraryScreen">
   <div class="fullscreen-header">
     <div class="fullscreen-header-left">
-      <button class="back-btn" id="backFromItinerary"><i class="fas fa-arrow-left"></i> Voltar</button>
+      <button class="back-btn" id="backFromItinerary" type="button"><i class="fas fa-arrow-left"></i> Voltar</button>
       <h2><i class="fas fa-route"></i> Sua viagem personalizada pela IA</h2>
     </div>
     <div class="fullscreen-header-right">
-      <button class="ai-btn small" id="regenerateBtn"><i class="fas fa-rotate"></i> Gerar outra</button>
+      <button class="ai-btn small" id="regenerateBtn" type="button"><i class="fas fa-rotate"></i> Gerar outra</button>
     </div>
   </div>
   <div class="ai-loading" id="aiLoading" style="display: none;">
@@ -557,9 +561,39 @@
   <div class="modal" id="modalContent"></div>
 </div>
 
+<!-- ============================================================
+     SCRIPTS — ordem correta
+     ============================================================ -->
 <script src="config.js"></script>
 <script src="admin.js"></script>
 <script src="compra.js"></script>
 <script src="script.js"></script>
+
+<!-- FALLBACK DE SEGURANÇA: se algum arquivo falhar, garante que os
+     botões principais não quebrem com "is not defined" -->
+<script>
+  // Fallbacks mínimos — só usados se o arquivo correspondente falhar
+  window.abrirLogin    = window.abrirLogin    || function(){ console.warn('admin.js não carregou'); };
+  window.fecharLogin   = window.fecharLogin   || function(){ const m=document.getElementById('loginModal'); if(m) m.classList.remove('active'); document.body.style.overflow=''; };
+  window.mudarAba      = window.mudarAba      || function(){ console.warn('admin.js não carregou'); };
+  window.irParaHome    = window.irParaHome    || function(e){ if(e) e.preventDefault(); };
+  window.abrirLeitor   = window.abrirLeitor   || function(){ console.warn('compra.js não carregou'); };
+  window.fecharLeitor  = window.fecharLeitor  || function(){ const m=document.getElementById('leitorModal'); if(m) m.classList.remove('active'); document.body.style.overflow=''; };
+  window.abrirCompra   = window.abrirCompra   || function(){ console.warn('compra.js não carregou'); };
+  window.fecharCompra  = window.fecharCompra  || function(){ const m=document.getElementById('compraModal'); if(m) m.classList.remove('active'); document.body.style.overflow=''; };
+  window.abrirFormExcursao  = window.abrirFormExcursao  || function(){ console.warn('admin.js não carregou'); };
+  window.fecharFormExcursao = window.fecharFormExcursao || function(){ const m=document.getElementById('excursaoModal'); if(m) m.classList.remove('active'); document.body.style.overflow=''; };
+  window.verDetalhesExcursao = window.verDetalhesExcursao || function(){ console.warn('admin.js não carregou'); };
+  window.editarExcursao = window.editarExcursao || function(){};
+  window.excluirExcursao = window.excluirExcursao || function(){};
+  window.closeModal = window.closeModal || function(){ const o=document.getElementById('modalOverlay'); if(o) o.classList.remove('active'); document.body.style.overflow=''; };
+  window.toggleSenha = window.toggleSenha || function(id, btn){
+    const input = document.getElementById(id); if(!input) return;
+    const icon = btn.querySelector('i');
+    if (input.type === 'password') { input.type='text'; icon.classList.replace('fa-eye','fa-eye-slash'); }
+    else { input.type='password'; icon.classList.replace('fa-eye-slash','fa-eye'); }
+  };
+  console.log('✅ Fallbacks de segurança aplicados');
+</script>
 </body>
 </html>

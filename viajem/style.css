@@ -2030,3 +2030,83 @@
     width: 100%;
   }
 }
+/* ============================================================
+   CORREÇÃO MOBILE - EXCURSÕES
+   ============================================================ */
+@media (max-width: 768px) {
+  .excursoes-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.2rem;
+  }
+  
+  .excursao-card {
+    display: flex !important;
+    flex-direction: column;
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+  
+  .excursao-img {
+    height: 160px;
+    min-height: 160px;
+  }
+  
+  .admin-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+/* Garante que nada fique escondido */
+.excursao-card,
+.excursoes-grid {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+/* ============================================================
+   CORREÇÃO DE CLIQUES — AHGA
+   Garante que modais fechados NÃO capturem cliques
+   ============================================================ */
+
+/* Modais fechados: invisíveis E sem captura de clique */
+.modal-overlay:not(.active) {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* Modais abertos: visíveis, acima de tudo, capturando clique */
+.modal-overlay.active {
+  display: flex !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  z-index: 10000 !important;
+}
+
+/* Telas fullscreen fechadas: nunca capturam clique */
+.fullscreen-results:not(.active) {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* Header sempre clicável e acima */
+.app-header {
+  position: relative;
+  z-index: 9999 !important;
+}
+
+/* Botões e links sempre clicáveis */
+button, a, .btn-login, .app-nav-link, .app-logout,
+.excursao-card button, .admin-actions button,
+.timeline-btn, .offer-buy, .details-btn, .packages-btn {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Overlay genérico nunca visível sem .active */
+#modalOverlay:not(.active) {
+  display: none !important;
+  pointer-events: none !important;
+}
