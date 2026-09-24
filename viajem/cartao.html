@@ -7,8 +7,8 @@
   <link rel="icon" type="image/png" href="logo.jpeg">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
   <style>
     * {
@@ -54,7 +54,6 @@
       pointer-events: none;
     }
 
-    /* Cabeçalho da empresa */
     .cartao-empresa {
       display: flex;
       align-items: center;
@@ -119,7 +118,6 @@
       font-family: 'Courier New', monospace;
     }
 
-    /* Destino */
     .cartao-destino {
       display: flex;
       align-items: center;
@@ -165,7 +163,6 @@
       flex-shrink: 0;
     }
 
-    /* Passageiro */
     .cartao-passageiro {
       margin-bottom: 1rem;
       position: relative;
@@ -189,7 +186,6 @@
       word-break: break-word;
     }
 
-    /* Detalhes (grid) */
     .cartao-detalhes {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
@@ -218,7 +214,6 @@
       word-break: break-word;
     }
 
-    /* QR Code */
     .cartao-qrcode {
       background: white;
       border-radius: 1rem;
@@ -227,18 +222,35 @@
       align-items: center;
       justify-content: center;
       margin: 0 auto 0.8rem;
-      max-width: 220px;
+      max-width: 240px;
+      min-height: 240px;
       position: relative;
       z-index: 1;
     }
 
-    .cartao-qrcode canvas {
+    .cartao-qrcode canvas,
+    .cartao-qrcode img {
       width: 100% !important;
       height: auto !important;
       display: block;
     }
 
-    /* Status */
+    .cartao-qrcode .qr-erro {
+      color: #e74c3c;
+      font-size: 0.8rem;
+      text-align: center;
+      padding: 1rem;
+      font-weight: 600;
+    }
+
+    .cartao-qrcode .qr-loading {
+      color: #7a1f3d;
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 1rem;
+      font-weight: 600;
+    }
+
     .cartao-status {
       display: block;
       text-align: center;
@@ -266,7 +278,6 @@
       border: 1px solid rgba(34, 181, 115, 0.4);
     }
 
-    /* Rodapé do cartão */
     .cartao-rodape {
       text-align: center;
       font-size: 0.65rem;
@@ -277,7 +288,6 @@
       z-index: 1;
     }
 
-    /* Loading / Erro */
     .estado {
       background: white;
       border-radius: 1.5rem;
@@ -307,7 +317,6 @@
       line-height: 1.5;
     }
 
-    /* Ações (fora do cartão) */
     .acoes {
       display: flex;
       gap: 0.5rem;
@@ -352,14 +361,10 @@
       transform: translateY(-2px);
     }
 
-    /* Impressão */
     @media print {
       body { background: white; padding: 0; }
       .acoes { display: none; }
-      .cartao {
-        box-shadow: none;
-        border-radius: 0;
-      }
+      .cartao { box-shadow: none; border-radius: 0; }
     }
   </style>
 </head>
@@ -401,6 +406,23 @@
     return primeiraPalavra.toUpperCase();
   }
 
+  // Aguarda a biblioteca QRCode ficar disponível (máx 5s)
+  function aguardarQRCode(callback, tentativas = 0) {
+    if (typeof QRCode !== 'undefined' && typeof QRCode.toCanvas === 'function') {
+      callback();
+      return;
+    }
+    if (tentativas > 50) {
+      console.error('❌ QRCode não carregou após 5s');
+      const qrBox = document.querySelector('.cartao-qrcode');
+      if (qrBox) {
+        qrBox.innerHTML = '<div class="qr-erro">⚠️ Biblioteca de QR Code não carregou. Recarregue a página.</div>';
+      }
+      return;
+    }
+    setTimeout(() => aguardarQRCode(callback, tentativas + 1), 100);
+  }
+
   async function carregarCartao() {
     const params = new URLSearchParams(window.location.search);
     const codigo = params.get('codigo');
@@ -417,15 +439,21 @@
     }
 
     try {
+      console.log('🔍 Buscando compra:', codigo);
+      console.log('🌐 API_URL:', API_URL);
+
       const r = await fetch(`${API_URL}/api/compras/${codigo}`);
       const data = await r.json();
+
+      console.log('📦 Resposta da API:', data);
 
       if (!r.ok || !data.compra) {
         conteudo.innerHTML = `
           <div class="estado erro">
             <i class="fas fa-times-circle"></i>
             <h3>Compra não encontrada</h3>
-            <p>O código <strong>${codigo}</strong> não foi localizado.<br>Verifique o link ou peça ao vendedor para reenviar.</p>
+            <p>O código <strong>${codigo}</strong> não foi localizado.<br>
+            Verifique o link ou peça ao vendedor para reenviar.</p>
           </div>`;
         return;
       }
@@ -493,8 +521,8 @@
             </div>
           </div>
 
-          <div class="cartao-qrcode">
-            <canvas id="qrcodeCanvas"></canvas>
+          <div class="cartao-qrcode" id="qrBox">
+            <div class="qr-loading">Gerando QR Code...</div>
           </div>
 
           <span class="cartao-status ${statusClass}">${statusLabel}</span>
@@ -505,33 +533,51 @@
         </div>
       `;
 
-      const canvas = document.getElementById('qrcodeCanvas');
-      if (typeof QRCode !== 'undefined') {
+      document.getElementById('acoes').style.display = 'flex';
+
+      // Aguarda a lib do QR Code carregar e gera
+      aguardarQRCode(function() {
+        const qrBox = document.getElementById('qrBox');
+        if (!qrBox) return;
+
+        qrBox.innerHTML = '';
+
+        const canvas = document.createElement('canvas');
+        qrBox.appendChild(canvas);
+
         QRCode.toCanvas(canvas, qrData, {
-          width: 320,
-          margin: 2,
+          width: 240,
+          margin: 1,
           errorCorrectionLevel: 'H',
           color: { dark: '#4a0f24', light: '#ffffff' }
         }, function(err) {
-          if (err) console.error('Erro QR:', err);
+          if (err) {
+            console.error('❌ Erro ao gerar QR:', err);
+            qrBox.innerHTML = '<div class="qr-erro">Erro ao gerar QR Code<br>' + err.message + '</div>';
+          } else {
+            console.log('✅ QR Code gerado com sucesso!');
+          }
         });
-      }
+      });
 
-      document.getElementById('acoes').style.display = 'flex';
     } catch (err) {
-      console.error(err);
+      console.error('❌ Erro ao carregar cartão:', err);
       conteudo.innerHTML = `
         <div class="estado erro">
           <i class="fas fa-exclamation-triangle"></i>
           <h3>Erro ao carregar</h3>
           <p>${err.message}</p>
+          <p style="font-size:0.8rem;color:#94a3b8;margin-top:1rem;">Verifique se o backend está rodando.</p>
         </div>`;
     }
   }
 
   function baixarCartao() {
-    const canvas = document.getElementById('qrcodeCanvas');
-    if (!canvas) return;
+    const canvas = document.querySelector('#qrBox canvas');
+    if (!canvas) {
+      alert('QR Code ainda não foi gerado. Aguarde um instante.');
+      return;
+    }
     const link = document.createElement('a');
     link.download = 'cartao-embarque-ahga.png';
     link.href = canvas.toDataURL('image/png');
