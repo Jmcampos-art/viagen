@@ -364,56 +364,36 @@
    /* ============================================================
       CARTÃO DE EMBARQUE (prévia dentro do modal)
       ============================================================ */
-   function mostrarCartaoEmbarque(compra) {
-     document.getElementById('embNome').textContent = compra.nome;
-     document.getElementById('embRG').textContent = compra.rg;
-     document.getElementById('embCPF').textContent = compra.cpf;
-     document.getElementById('embExcursao').textContent = compra.excursaoTitulo;
-     document.getElementById('embDestino').textContent = compra.excursaoDestino;
-     document.getElementById('embData').textContent = formatarDataBR(compra.excursaoData);
-     document.getElementById('embQtd').textContent = compra.qtd + ' pessoa(s)';
-     document.getElementById('embCodigo').textContent = compra.codigo;
-   
-     const qrData = JSON.stringify({
-       codigo: compra.codigo,
-       nome: compra.nome,
-       cpf: compra.cpf,
-       rg: compra.rg,
-       excursao: compra.excursaoTitulo,
-       destino: compra.excursaoDestino,
-       qtd: compra.qtd,
-       total: compra.total
-     });
-   
-     const canvas = document.getElementById('qrcodeCanvas');
-     if (typeof QRCode !== 'undefined') {
-       QRCode.toCanvas(canvas, qrData, {
-         width: 200,
-         margin: 1,
-         color: { dark: '#1e2b3c', light: '#ffffff' }
-       }, (err) => {
-         if (err) console.error('Erro QR Code:', err);
-       });
-     } else {
-       console.warn('QRCode library não carregada');
-     }
-   
-     document.getElementById('embarqueModal').classList.add('active');
-     document.body.style.overflow = 'hidden';
-   }
-   
-   function fecharEmbarque() {
-     document.getElementById('embarqueModal').classList.remove('active');
-     document.body.style.overflow = '';
-   }
-   
-   function baixarCartao() {
-     const canvas = document.getElementById('qrcodeCanvas');
-     const link = document.createElement('a');
-     link.download = `cartao-embarque-${document.getElementById('embCodigo').textContent}.png`;
-     link.href = canvas.toDataURL('image/png');
-     link.click();
-   }
+      function mostrarCartaoEmbarque(compra) {
+        document.getElementById('embNome').textContent = compra.nome;
+        document.getElementById('embRG').textContent = compra.rg;
+        document.getElementById('embCPF').textContent = compra.cpf;
+        document.getElementById('embExcursao').textContent = compra.excursaoTitulo;
+        document.getElementById('embDestino').textContent = compra.excursaoDestino;
+        document.getElementById('embData').textContent = formatarDataBR(compra.excursaoData);
+        document.getElementById('embQtd').textContent = compra.qtd + ' pessoa(s)';
+        document.getElementById('embCodigo').textContent = compra.codigo;
+      
+        // ✅ SOLUÇÃO: só o código (o servidor busca o resto)
+        const qrData = compra.codigo;
+      
+        const canvas = document.getElementById('qrcodeCanvas');
+        if (typeof QRCode !== 'undefined') {
+          QRCode.toCanvas(canvas, qrData, {
+            width: 200,
+            margin: 1,
+            errorCorrectionLevel: 'L',  // ✅ L = mais capacidade (nível baixo de correção)
+            color: { dark: '#1e2b3c', light: '#ffffff' }
+          }, (err) => {
+            if (err) console.error('Erro QR Code:', err);
+          });
+        } else {
+          console.warn('QRCode library não carregada');
+        }
+      
+        document.getElementById('embarqueModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
    
    /* ============================================================
       LEITOR DE QR CODE (ADMIN)

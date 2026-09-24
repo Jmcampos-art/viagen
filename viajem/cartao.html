@@ -141,14 +141,10 @@
 
       const c = data.compra;
 
-      // ✅ QR Code ENXUTO — só o essencial
-      const qrData = JSON.stringify({
-        codigo: c.codigo,
-        nome: c.nome,
-        cpf: c.cpf
-      });
+      // ✅ CORREÇÃO: QR Code só com o código (o servidor busca o resto)
+      const qrData = c.codigo;
 
-      console.log('📦 Tamanho do QR data:', qrData.length, 'chars');
+      console.log('📦 QR data:', qrData, '| tamanho:', qrData.length, 'chars');
 
       const statusClass = c.status === 'utilizado' ? 'utilizado' : 'pendente';
       const statusLabel = c.status === 'utilizado' ? '✅ Utilizado' : '⏳ Pendente';
@@ -208,7 +204,7 @@
             height: 220,
             colorDark: '#4a0f24',
             colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.M  // ✅ M = mais capacidade
+            correctLevel: QRCode.CorrectLevel.L  // ✅ L = mais capacidade
           });
           console.log('✅ QR Code gerado com sucesso!');
         } catch (err) {
