@@ -18,7 +18,7 @@
        id: 'hiago',
        nome: 'Hiago Lippi',
        cargo: 'Vendedor',
-       numero: '55149997727274' // ← troque pelo número real
+       numero: '5514997727274' // ← troque pelo número real
      }
    ];
    
