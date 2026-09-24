@@ -2456,3 +2456,15 @@ button, a, .btn-login, .app-nav-link, .app-logout,
 @media print {
   .lista-abas { display: none !important; }
 }
+/* ============================================================
+   BOTÃO EXCLUIR PASSAGEIRO
+   ============================================================ */
+.icon-btn.delete-passageiro {
+  background: #ffe0e0;
+  color: #a13030;
+}
+.icon-btn.delete-passageiro:hover {
+  background: #e74c3c;
+  color: white;
+  transform: scale(1.1);
+}
