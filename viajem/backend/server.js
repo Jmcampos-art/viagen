@@ -964,7 +964,7 @@ app.post('/api/excursoes', exigirAdminHeader, async (req, res) => {
       dataIda,
       dataVolta: dataVolta || '',
       preco: Number(preco),
-      vagas: Number(vagas) || 0,   // ← se não preencher, vira 0
+      vagas: Number(vagas) || 0,
       inclui: Array.isArray(inclui) ? inclui : [],
       roteiro: Array.isArray(roteiro) ? roteiro : [],
       categoria: categoria || 'Geral',
@@ -1052,29 +1052,60 @@ app.get('/api/compras', async (req, res) => {
   }
 });
 
-/* POST público — registrar nova compra */
+/* POST público — registrar nova compra (DECREMENTA VAGAS) */
 app.post('/api/compras', async (req, res) => {
   try {
     const db = getDB();
     if (!db) return res.status(500).json({ error: 'Banco não conectado' });
 
-    const { codigo, nome, cpf, excursaoId } = req.body;
+    const { codigo, nome, cpf, excursaoId, qtd } = req.body;
     if (!codigo || !nome || !cpf || !excursaoId) {
       return res.status(400).json({ error: 'Dados incompletos' });
     }
 
+    // ✅ Evita duplicata pelo código
     const existe = await db.collection('compras').findOne({ codigo });
     if (existe) return res.status(409).json({ error: 'Código já existe' });
 
+    // ✅ Busca a excursão
+    const excursao = await db.collection('excursoes').findOne({ id: excursaoId });
+    if (!excursao) {
+      return res.status(404).json({ error: 'Excursão não encontrada' });
+    }
+
+    const qtdNum = Number(qtd) || 1;
+    const vagasAtuais = Number(excursao.vagas) || 0;
+    const temControleVagas = vagasAtuais > 0;
+
+    // ✅ Verifica se ainda tem vagas suficientes
+    if (temControleVagas && qtdNum > vagasAtuais) {
+      return res.status(400).json({
+        error: `Vagas insuficientes. Restam apenas ${vagasAtuais} vaga(s).`
+      });
+    }
+
     const nova = {
       ...req.body,
-      qtd: Number(req.body.qtd) || 1,
+      qtd: qtdNum,
       total: Number(req.body.total) || 0,
       status: 'pendente',
       criadoEm: new Date().toISOString()
     };
 
+    // ✅ Insere a compra
     await db.collection('compras').insertOne(nova);
+
+    // ✅ Decrementa as vagas
+    if (temControleVagas) {
+      await db.collection('excursoes').updateOne(
+        { id: excursaoId },
+        { $inc: { vagas: -qtdNum } }
+      );
+      console.log(`📦 Compra ${codigo}: ${qtdNum} vaga(s) removida(s). Restam ${vagasAtuais - qtdNum}`);
+    } else {
+      console.log(`📦 Compra ${codigo}: vagas ilimitadas`);
+    }
+
     console.log(`🎫 Compra registrada: ${codigo} - ${nome}`);
     res.status(201).json({ compra: nova });
   } catch (err) {
@@ -1109,6 +1140,10 @@ app.post('/api/compras/:codigo/validar', async (req, res) => {
       return res.status(400).json({ error: 'Já utilizado', utilizadoEm: compra.utilizadoEm });
     }
 
+    if (compra.status === 'cancelado') {
+      return res.status(400).json({ error: 'Compra cancelada' });
+    }
+
     await db.collection('compras').updateOne(
       { codigo: req.params.codigo },
       { $set: { status: 'utilizado', utilizadoEm: new Date().toISOString() } }
@@ -1117,6 +1152,99 @@ app.post('/api/compras/:codigo/validar', async (req, res) => {
     const atualizada = await db.collection('compras').findOne({ codigo: req.params.codigo });
     console.log(`✅ Embarque validado: ${req.params.codigo}`);
     res.json({ ok: true, compra: atualizada });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ============================================================
+   APROVAR / CANCELAR / EXCLUIR COMPRA (ADMIN)
+   ============================================================ */
+
+/* PUT — Aprovar compra */
+app.put('/api/compras/:codigo/aprovar', exigirAdminHeader, async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.status(500).json({ error: 'Banco não conectado' });
+
+    const result = await db.collection('compras').updateOne(
+      { codigo: req.params.codigo },
+      { $set: { status: 'aprovado', aprovadoEm: new Date().toISOString() } }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Compra não encontrada' });
+    }
+
+    console.log(`✅ Compra aprovada: ${req.params.codigo}`);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* PUT — Cancelar compra (DEVOLVE VAGAS) */
+app.put('/api/compras/:codigo/cancelar', exigirAdminHeader, async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.status(500).json({ error: 'Banco não conectado' });
+
+    const compra = await db.collection('compras').findOne({ codigo: req.params.codigo });
+    if (!compra) {
+      return res.status(404).json({ error: 'Compra não encontrada' });
+    }
+
+    if (compra.status === 'cancelado') {
+      return res.status(400).json({ error: 'Compra já está cancelada' });
+    }
+
+    await db.collection('compras').updateOne(
+      { codigo: req.params.codigo },
+      { $set: { status: 'cancelado', canceladoEm: new Date().toISOString() } }
+    );
+
+    // ✅ Devolve as vagas (se a excursão tem controle)
+    const excursao = await db.collection('excursoes').findOne({ id: compra.excursaoId });
+    if (excursao) {
+      const qtd = Number(compra.qtd) || 1;
+      await db.collection('excursoes').updateOne(
+        { id: compra.excursaoId },
+        { $inc: { vagas: qtd } }
+      );
+      console.log(`❌ Compra ${req.params.codigo} cancelada. ${qtd} vaga(s) devolvida(s).`);
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* DELETE — Excluir compra (DEVOLVE VAGAS) */
+app.delete('/api/compras/:codigo', exigirAdminHeader, async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.status(500).json({ error: 'Banco não conectado' });
+
+    const compra = await db.collection('compras').findOne({ codigo: req.params.codigo });
+    if (!compra) {
+      return res.status(404).json({ error: 'Compra não encontrada' });
+    }
+
+    await db.collection('compras').deleteOne({ codigo: req.params.codigo });
+
+    // ✅ Devolve as vagas (se a excursão tem controle)
+    const excursao = await db.collection('excursoes').findOne({ id: compra.excursaoId });
+    if (excursao) {
+      const qtd = Number(compra.qtd) || 1;
+      await db.collection('excursoes').updateOne(
+        { id: compra.excursaoId },
+        { $inc: { vagas: qtd } }
+      );
+      console.log(`🗑️ Compra ${req.params.codigo} excluída. ${qtd} vaga(s) devolvida(s).`);
+    }
+
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

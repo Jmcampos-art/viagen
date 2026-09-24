@@ -135,6 +135,11 @@
    }
    
    /* ============================================================
+      ✅ FLAG ANTI-DUPLO-CLIQUE
+      ============================================================ */
+   let enviandoCompra = false;
+   
+   /* ============================================================
       INICIALIZAÇÃO
       ============================================================ */
    document.addEventListener('DOMContentLoaded', () => {
@@ -152,6 +157,12 @@
    
      document.getElementById('formCompra')?.addEventListener('submit', async (e) => {
        e.preventDefault();
+   
+       // ✅ Evita clique duplo
+       if (enviandoCompra) {
+         console.warn('⏳ Compra já sendo enviada...');
+         return;
+       }
    
        const nome = document.getElementById('compraNome').value.trim();
        const rg = document.getElementById('compraRG').value.trim();
@@ -182,9 +193,7 @@
          return;
        }
    
-       // ✅ IDENTIFICA O VENDEDOR SELECIONADO
        const vendedorSelecionado = WHATSAPP_NUMEROS.find(v => v.numero === vendedorNumero);
-   
        const codigo = gerarCodigoEmbarque();
    
        const compra = {
@@ -199,11 +208,18 @@
          total: Number(excursaoSelecionada.preco) * qtd,
          status: 'pendente',
          criadoEm: new Date().toISOString(),
-         // ✅ SALVA O VENDEDOR RESPONSÁVEL
          vendedorNome: vendedorSelecionado ? vendedorSelecionado.nome : 'Não informado',
          vendedorId: vendedorSelecionado ? vendedorSelecionado.id : null,
          vendedorNumero: vendedorNumero
        };
+   
+       // ✅ Trava o botão
+       enviandoCompra = true;
+       const btn = document.getElementById('btnEnviarCompra');
+       if (btn) {
+         btn.disabled = true;
+         btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Enviando...';
+       }
    
        try {
          const r = await fetch(`${API_URL_COMPRA}/api/compras`, {
@@ -255,6 +271,12 @@
        } catch (err) {
          console.error(err);
          alert('Erro ao registrar compra: ' + err.message);
+       } finally {
+         enviandoCompra = false;
+         if (btn) {
+           btn.disabled = false;
+           btn.innerHTML = '<i class="fab fa-whatsapp"></i> Enviar pelo WhatsApp';
+         }
        }
      });
    });
@@ -364,36 +386,49 @@
    /* ============================================================
       CARTÃO DE EMBARQUE (prévia dentro do modal)
       ============================================================ */
-      function mostrarCartaoEmbarque(compra) {
-        document.getElementById('embNome').textContent = compra.nome;
-        document.getElementById('embRG').textContent = compra.rg;
-        document.getElementById('embCPF').textContent = compra.cpf;
-        document.getElementById('embExcursao').textContent = compra.excursaoTitulo;
-        document.getElementById('embDestino').textContent = compra.excursaoDestino;
-        document.getElementById('embData').textContent = formatarDataBR(compra.excursaoData);
-        document.getElementById('embQtd').textContent = compra.qtd + ' pessoa(s)';
-        document.getElementById('embCodigo').textContent = compra.codigo;
-      
-        // ✅ SOLUÇÃO: só o código (o servidor busca o resto)
-        const qrData = compra.codigo;
-      
-        const canvas = document.getElementById('qrcodeCanvas');
-        if (typeof QRCode !== 'undefined') {
-          QRCode.toCanvas(canvas, qrData, {
-            width: 200,
-            margin: 1,
-            errorCorrectionLevel: 'L',  // ✅ L = mais capacidade (nível baixo de correção)
-            color: { dark: '#1e2b3c', light: '#ffffff' }
-          }, (err) => {
-            if (err) console.error('Erro QR Code:', err);
-          });
-        } else {
-          console.warn('QRCode library não carregada');
-        }
-      
-        document.getElementById('embarqueModal').classList.add('active');
-        document.body.style.overflow = 'hidden';
-      }
+   function mostrarCartaoEmbarque(compra) {
+     document.getElementById('embNome').textContent = compra.nome;
+     document.getElementById('embRG').textContent = compra.rg;
+     document.getElementById('embCPF').textContent = compra.cpf;
+     document.getElementById('embExcursao').textContent = compra.excursaoTitulo;
+     document.getElementById('embDestino').textContent = compra.excursaoDestino;
+     document.getElementById('embData').textContent = formatarDataBR(compra.excursaoData);
+     document.getElementById('embQtd').textContent = compra.qtd + ' pessoa(s)';
+     document.getElementById('embCodigo').textContent = compra.codigo;
+   
+     // ✅ QR Code só com o código (o servidor busca o resto)
+     const qrData = compra.codigo;
+   
+     const canvas = document.getElementById('qrcodeCanvas');
+     if (typeof QRCode !== 'undefined') {
+       QRCode.toCanvas(canvas, qrData, {
+         width: 200,
+         margin: 1,
+         errorCorrectionLevel: 'L',
+         color: { dark: '#1e2b3c', light: '#ffffff' }
+       }, (err) => {
+         if (err) console.error('Erro QR Code:', err);
+       });
+     } else {
+       console.warn('QRCode library não carregada');
+     }
+   
+     document.getElementById('embarqueModal').classList.add('active');
+     document.body.style.overflow = 'hidden';
+   }
+   
+   function fecharEmbarque() {
+     document.getElementById('embarqueModal').classList.remove('active');
+     document.body.style.overflow = '';
+   }
+   
+   function baixarCartao() {
+     const canvas = document.getElementById('qrcodeCanvas');
+     const link = document.createElement('a');
+     link.download = `cartao-embarque-${document.getElementById('embCodigo').textContent}.png`;
+     link.href = canvas.toDataURL('image/png');
+     link.click();
+   }
    
    /* ============================================================
       LEITOR DE QR CODE (ADMIN)
@@ -460,35 +495,50 @@
      }
    });
    
+   /* ============================================================
+      PROCESSA QR CODE LIDO (aceita 2 formatos)
+      ============================================================ */
    async function processarQRCode(texto) {
      const resultado = document.getElementById('leitorResultado');
      resultado.style.display = 'block';
    
-     let dados;
+     // ✅ Aceita 2 formatos: código puro OU JSON antigo
+     let codigo = null;
+   
      try {
-       dados = JSON.parse(texto);
+       const dados = JSON.parse(texto);
+       if (dados && dados.codigo) {
+         codigo = dados.codigo;
+       }
      } catch {
+       codigo = texto.trim();
+     }
+   
+     if (!codigo) {
+       resultado.innerHTML = `
+         <div class="leitor-erro">
+           <i class="fas fa-times-circle"></i>
+           <h4>QR Code inválido</h4>
+           <p>Não foi possível identificar um código de embarque.</p>
+         </div>`;
+       return;
+     }
+   
+     if (!codigo.startsWith('AHGA-')) {
        resultado.innerHTML = `
          <div class="leitor-erro">
            <i class="fas fa-times-circle"></i>
            <h4>QR Code inválido</h4>
            <p>Este código não pertence à AHGA Turismo.</p>
-         </div>`;
-       return;
-     }
-   
-     if (!dados.codigo) {
-       resultado.innerHTML = `
-         <div class="leitor-erro">
-           <i class="fas fa-times-circle"></i>
-           <h4>QR Code inválido</h4>
-           <p>Código de embarque ausente.</p>
+           <p style="font-size:0.78rem; margin-top:0.5rem; opacity:0.6; word-break:break-all;">
+             Lido: <code>${codigo.substring(0, 40)}${codigo.length > 40 ? '...' : ''}</code>
+           </p>
          </div>`;
        return;
      }
    
      try {
-       const r = await fetch(`${API_URL_COMPRA}/api/compras/${dados.codigo}`);
+       const r = await fetch(`${API_URL_COMPRA}/api/compras/${codigo}`);
        const data = await r.json();
    
        if (!r.ok || !data.compra) {
@@ -496,7 +546,7 @@
            <div class="leitor-erro">
              <i class="fas fa-exclamation-triangle"></i>
              <h4>Código não encontrado</h4>
-             <p>Código: <strong>${dados.codigo}</strong></p>
+             <p>Código: <strong>${codigo}</strong></p>
              <p>Verifique se a compra foi registrada no sistema.</p>
            </div>`;
          return;
@@ -504,19 +554,55 @@
    
        const c = data.compra;
    
+       // ❌ Cancelado
+       if (c.status === 'cancelado') {
+         resultado.innerHTML = `
+           <div class="leitor-erro">
+             <i class="fas fa-ban"></i>
+             <h4>❌ Compra cancelada</h4>
+             <div class="leitor-info">
+               <div><span>Passageiro:</span><strong>${c.nome}</strong></div>
+               <div><span>Excursão:</span><strong>${c.excursaoTitulo}</strong></div>
+               <div><span>CPF:</span><strong>${c.cpf}</strong></div>
+             </div>
+             <p style="margin-top:0.8rem;">Esta compra foi cancelada pelo vendedor.</p>
+           </div>`;
+         return;
+       }
+   
+       // ⏳ Pendente
+       if (c.status === 'pendente') {
+         resultado.innerHTML = `
+           <div class="leitor-aviso">
+             <i class="fas fa-clock"></i>
+             <h4>⏳ Pagamento pendente</h4>
+             <div class="leitor-info">
+               <div><span>Passageiro:</span><strong>${c.nome}</strong></div>
+               <div><span>Excursão:</span><strong>${c.excursaoTitulo}</strong></div>
+               <div><span>Valor:</span><strong>R$ ${Number(c.total || 0).toLocaleString('pt-BR')}</strong></div>
+             </div>
+             <p style="margin-top:0.8rem;">Aprove a compra no painel antes de liberar o embarque.</p>
+           </div>`;
+         return;
+       }
+   
+       // ⚠️ Já utilizado
        if (c.status === 'utilizado') {
          resultado.innerHTML = `
            <div class="leitor-aviso">
              <i class="fas fa-exclamation-triangle"></i>
              <h4>⚠️ Já utilizado</h4>
-             <p><strong>${c.nome}</strong></p>
-             <p>CPF: ${c.cpf}</p>
-             <p>Utilizado em: ${new Date(c.utilizadoEm).toLocaleString('pt-BR')}</p>
+             <div class="leitor-info">
+               <div><span>Passageiro:</span><strong>${c.nome}</strong></div>
+               <div><span>CPF:</span><strong>${c.cpf}</strong></div>
+               <div><span>Utilizado em:</span><strong>${new Date(c.utilizadoEm).toLocaleString('pt-BR')}</strong></div>
+             </div>
            </div>`;
          return;
        }
    
-       await fetch(`${API_URL_COMPRA}/api/compras/${dados.codigo}/validar`, {
+       // ✅ Sucesso
+       await fetch(`${API_URL_COMPRA}/api/compras/${codigo}/validar`, {
          method: 'POST'
        });
    
@@ -557,5 +643,6 @@
    window.abrirSolicitarCartao = abrirSolicitarCartao;
    window.fecharSolicitarCartao = fecharSolicitarCartao;
    window.enviarSolicitacaoCartao = enviarSolicitacaoCartao;
+   window.processarQRCode = processarQRCode;
    
    console.log('✅ compra.js carregado com sucesso');
