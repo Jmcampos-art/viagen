@@ -8,362 +8,54 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="config.js"></script>
-  <!-- ✅ CDN que funciona -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Poppins', system-ui, sans-serif;
-    }
-
-    body {
-      background: linear-gradient(145deg, #f8faff 0%, #eef2f9 100%);
-      min-height: 100vh;
-      padding: 1.5rem 1rem;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-    }
-
-    .cartao-wrapper {
-      width: 100%;
-      max-width: 380px;
-    }
-
-    .cartao {
-      background: linear-gradient(135deg, #7a1f3d 0%, #4a0f24 100%);
-      border-radius: 1.5rem;
-      padding: 1.5rem;
-      color: white;
-      box-shadow: 0 25px 50px -12px rgba(74, 15, 36, 0.5);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .cartao::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      right: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle, rgba(233, 30, 99, 0.15) 0%, transparent 70%);
-      pointer-events: none;
-    }
-
-    .cartao-empresa {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      margin-bottom: 1.2rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-      position: relative;
-      z-index: 1;
-    }
-
-    .cartao-empresa-logo {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 3px;
-      flex-shrink: 0;
-    }
-
-    .cartao-empresa-logo img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      border-radius: 50%;
-    }
-
-    .cartao-empresa-info {
-      flex: 1;
-    }
-
-    .cartao-empresa-nome {
-      font-size: 0.95rem;
-      font-weight: 800;
-      letter-spacing: 0.5px;
-      line-height: 1.1;
-    }
-
-    .cartao-empresa-sub {
-      font-size: 0.7rem;
-      opacity: 0.75;
-      font-weight: 500;
-      letter-spacing: 0.3px;
-    }
-
-    .cartao-codigo {
-      text-align: right;
-      font-size: 0.6rem;
-      opacity: 0.9;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
-
-    .cartao-codigo strong {
-      display: block;
-      font-size: 0.75rem;
-      letter-spacing: 1px;
-      margin-top: 0.1rem;
-      font-family: 'Courier New', monospace;
-    }
-
-    .cartao-destino {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      margin-bottom: 1.2rem;
-      position: relative;
-      z-index: 1;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', system-ui, sans-serif; }
+    body { background: linear-gradient(145deg, #f8faff 0%, #eef2f9 100%); min-height: 100vh; padding: 1.5rem 1rem; display: flex; justify-content: center; align-items: flex-start; }
+    .cartao-wrapper { width: 100%; max-width: 380px; }
+    .cartao { background: linear-gradient(135deg, #7a1f3d 0%, #4a0f24 100%); border-radius: 1.5rem; padding: 1.5rem; color: white; box-shadow: 0 25px 50px -12px rgba(74, 15, 36, 0.5); position: relative; overflow: hidden; }
+    .cartao::before { content: ''; position: absolute; top: -50%; right: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(233, 30, 99, 0.15) 0%, transparent 70%); pointer-events: none; }
+    .cartao-empresa { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.2rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.15); position: relative; z-index: 1; }
+    .cartao-empresa-logo { width: 40px; height: 40px; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center; padding: 3px; flex-shrink: 0; }
+    .cartao-empresa-logo img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+    .cartao-empresa-info { flex: 1; }
+    .cartao-empresa-nome { font-size: 0.95rem; font-weight: 800; letter-spacing: 0.5px; line-height: 1.1; }
+    .cartao-empresa-sub { font-size: 0.7rem; opacity: 0.75; font-weight: 500; letter-spacing: 0.3px; }
+    .cartao-codigo { text-align: right; font-size: 0.6rem; opacity: 0.9; font-weight: 700; letter-spacing: 0.5px; }
+    .cartao-codigo strong { display: block; font-size: 0.75rem; letter-spacing: 1px; margin-top: 0.1rem; font-family: 'Courier New', monospace; }
+    .cartao-destino { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.2rem; position: relative; z-index: 1; }
     .cartao-destino-bloco { flex: 1; }
-
-    .cartao-destino-label {
-      font-size: 0.6rem;
-      opacity: 0.65;
-      letter-spacing: 1px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .cartao-destino-cidade {
-      font-size: 1.6rem;
-      font-weight: 900;
-      letter-spacing: 0.5px;
-      line-height: 1.1;
-      margin-top: 0.2rem;
-      text-transform: uppercase;
-      word-break: break-word;
-    }
-
-    .cartao-destino-data {
-      font-size: 0.75rem;
-      opacity: 0.8;
-      margin-top: 0.2rem;
-      font-weight: 600;
-    }
-
-    .cartao-destino-aviao {
-      font-size: 1.3rem;
-      color: #ffb347;
-      flex-shrink: 0;
-    }
-
-    .cartao-passageiro {
-      margin-bottom: 1rem;
-      position: relative;
-      z-index: 1;
-    }
-
-    .cartao-passageiro-label {
-      font-size: 0.6rem;
-      opacity: 0.65;
-      letter-spacing: 1px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .cartao-passageiro-nome {
-      font-size: 1.05rem;
-      font-weight: 800;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      margin-top: 0.2rem;
-      word-break: break-word;
-    }
-
-    .cartao-detalhes {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 0.6rem;
-      padding: 0.8rem 0;
-      border-top: 1px dashed rgba(255, 255, 255, 0.2);
-      border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
-      margin-bottom: 1.2rem;
-      position: relative;
-      z-index: 1;
-    }
-
-    .cartao-detalhe-label {
-      font-size: 0.55rem;
-      opacity: 0.6;
-      letter-spacing: 0.8px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .cartao-detalhe-valor {
-      font-size: 0.8rem;
-      font-weight: 800;
-      letter-spacing: 0.5px;
-      margin-top: 0.15rem;
-      word-break: break-word;
-    }
-
-    .cartao-qrcode {
-      background: white;
-      border-radius: 1rem;
-      padding: 0.8rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 0.8rem;
-      max-width: 240px;
-      min-height: 240px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .cartao-qrcode img,
-    .cartao-qrcode canvas {
-      width: 100% !important;
-      height: auto !important;
-      display: block;
-    }
-
-    .cartao-qrcode .qr-erro {
-      color: #e74c3c;
-      font-size: 0.8rem;
-      text-align: center;
-      padding: 1rem;
-      font-weight: 600;
-    }
-
-    .cartao-qrcode .qr-loading {
-      color: #7a1f3d;
-      font-size: 0.85rem;
-      text-align: center;
-      padding: 1rem;
-      font-weight: 600;
-    }
-
-    .cartao-status {
-      display: block;
-      text-align: center;
-      padding: 0.3rem 0.7rem;
-      border-radius: 20px;
-      font-size: 0.65rem;
-      font-weight: 800;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      margin: 0.5rem auto 0;
-      max-width: 160px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .cartao-status.pendente {
-      background: rgba(255, 179, 71, 0.25);
-      color: #ffb347;
-      border: 1px solid rgba(255, 179, 71, 0.4);
-    }
-
-    .cartao-status.utilizado {
-      background: rgba(34, 181, 115, 0.25);
-      color: #4ade80;
-      border: 1px solid rgba(34, 181, 115, 0.4);
-    }
-
-    .cartao-rodape {
-      text-align: center;
-      font-size: 0.65rem;
-      opacity: 0.7;
-      letter-spacing: 0.3px;
-      margin-top: 1rem;
-      position: relative;
-      z-index: 1;
-    }
-
-    .estado {
-      background: white;
-      border-radius: 1.5rem;
-      padding: 3rem 2rem;
-      text-align: center;
-      box-shadow: 0 15px 35px -12px rgba(30, 43, 60, 0.15);
-      max-width: 380px;
-      margin: 0 auto;
-    }
-
-    .estado i {
-      font-size: 2.5rem;
-      color: #e91e63;
-      margin-bottom: 1rem;
-    }
-
+    .cartao-destino-label { font-size: 0.6rem; opacity: 0.65; letter-spacing: 1px; font-weight: 600; text-transform: uppercase; }
+    .cartao-destino-cidade { font-size: 1.6rem; font-weight: 900; letter-spacing: 0.5px; line-height: 1.1; margin-top: 0.2rem; text-transform: uppercase; word-break: break-word; }
+    .cartao-destino-data { font-size: 0.75rem; opacity: 0.8; margin-top: 0.2rem; font-weight: 600; }
+    .cartao-destino-aviao { font-size: 1.3rem; color: #ffb347; flex-shrink: 0; }
+    .cartao-passageiro { margin-bottom: 1rem; position: relative; z-index: 1; }
+    .cartao-passageiro-label { font-size: 0.6rem; opacity: 0.65; letter-spacing: 1px; font-weight: 600; text-transform: uppercase; }
+    .cartao-passageiro-nome { font-size: 1.05rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 0.2rem; word-break: break-word; }
+    .cartao-detalhes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.6rem; padding: 0.8rem 0; border-top: 1px dashed rgba(255, 255, 255, 0.2); border-bottom: 1px dashed rgba(255, 255, 255, 0.2); margin-bottom: 1.2rem; position: relative; z-index: 1; }
+    .cartao-detalhe-label { font-size: 0.55rem; opacity: 0.6; letter-spacing: 0.8px; font-weight: 600; text-transform: uppercase; }
+    .cartao-detalhe-valor { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.5px; margin-top: 0.15rem; word-break: break-word; }
+    .cartao-qrcode { background: white; border-radius: 1rem; padding: 0.8rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.8rem; max-width: 240px; min-height: 240px; position: relative; z-index: 1; }
+    .cartao-qrcode img, .cartao-qrcode canvas { width: 100% !important; height: auto !important; display: block; }
+    .cartao-qrcode .qr-erro { color: #e74c3c; font-size: 0.8rem; text-align: center; padding: 1rem; font-weight: 600; }
+    .cartao-qrcode .qr-loading { color: #7a1f3d; font-size: 0.85rem; text-align: center; padding: 1rem; font-weight: 600; }
+    .cartao-status { display: block; text-align: center; padding: 0.3rem 0.7rem; border-radius: 20px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; margin: 0.5rem auto 0; max-width: 160px; position: relative; z-index: 1; }
+    .cartao-status.pendente { background: rgba(255, 179, 71, 0.25); color: #ffb347; border: 1px solid rgba(255, 179, 71, 0.4); }
+    .cartao-status.utilizado { background: rgba(34, 181, 115, 0.25); color: #4ade80; border: 1px solid rgba(34, 181, 115, 0.4); }
+    .cartao-rodape { text-align: center; font-size: 0.65rem; opacity: 0.7; letter-spacing: 0.3px; margin-top: 1rem; position: relative; z-index: 1; }
+    .estado { background: white; border-radius: 1.5rem; padding: 3rem 2rem; text-align: center; box-shadow: 0 15px 35px -12px rgba(30, 43, 60, 0.15); max-width: 380px; margin: 0 auto; }
+    .estado i { font-size: 2.5rem; color: #e91e63; margin-bottom: 1rem; }
     .estado.erro i { color: #e74c3c; }
-    .estado h3 {
-      font-size: 1.1rem;
-      color: #1e2b3c;
-      margin-bottom: 0.5rem;
-      font-weight: 800;
-    }
-    .estado p {
-      font-size: 0.9rem;
-      color: #64748b;
-      line-height: 1.5;
-    }
-
-    .acoes {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 1rem;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .acao-btn {
-      padding: 0.8rem 1.3rem;
-      border-radius: 2rem;
-      font-weight: 700;
-      font-size: 0.85rem;
-      cursor: pointer;
-      transition: all 0.25s;
-      border: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-family: inherit;
-    }
-
-    .acao-btn.primario {
-      background: linear-gradient(135deg, #e91e63 0%, #f5a623 100%);
-      color: white;
-      box-shadow: 0 8px 20px -6px rgba(233, 30, 99, 0.5);
-    }
-
-    .acao-btn.primario:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 14px 28px -6px rgba(233, 30, 99, 0.7);
-    }
-
-    .acao-btn.secundario {
-      background: white;
-      color: #1e2b3c;
-      border: 1.5px solid #cbd5e1;
-    }
-
-    .acao-btn.secundario:hover {
-      background: #f1f5fc;
-      transform: translateY(-2px);
-    }
-
-    @media print {
-      body { background: white; padding: 0; }
-      .acoes { display: none; }
-      .cartao { box-shadow: none; border-radius: 0; }
-    }
+    .estado h3 { font-size: 1.1rem; color: #1e2b3c; margin-bottom: 0.5rem; font-weight: 800; }
+    .estado p { font-size: 0.9rem; color: #64748b; line-height: 1.5; }
+    .acoes { display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: center; flex-wrap: wrap; }
+    .acao-btn { padding: 0.8rem 1.3rem; border-radius: 2rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: all 0.25s; border: none; display: inline-flex; align-items: center; gap: 0.4rem; font-family: inherit; }
+    .acao-btn.primario { background: linear-gradient(135deg, #e91e63 0%, #f5a623 100%); color: white; box-shadow: 0 8px 20px -6px rgba(233, 30, 99, 0.5); }
+    .acao-btn.primario:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -6px rgba(233, 30, 99, 0.7); }
+    .acao-btn.secundario { background: white; color: #1e2b3c; border: 1.5px solid #cbd5e1; }
+    .acao-btn.secundario:hover { background: #f1f5fc; transform: translateY(-2px); }
+    @media print { body { background: white; padding: 0; } .acoes { display: none; } .cartao { box-shadow: none; border-radius: 0; } }
   </style>
 </head>
 <body>
@@ -412,9 +104,7 @@
     if (tentativas > 50) {
       console.error('❌ QRCode não carregou após 5s');
       const qrBox = document.querySelector('.cartao-qrcode');
-      if (qrBox) {
-        qrBox.innerHTML = '<div class="qr-erro">⚠️ Biblioteca de QR Code não carregou. Recarregue a página.</div>';
-      }
+      if (qrBox) qrBox.innerHTML = '<div class="qr-erro">⚠️ Biblioteca de QR Code não carregou. Recarregue a página.</div>';
       return;
     }
     setTimeout(() => aguardarQRCode(callback, tentativas + 1), 100);
@@ -450,12 +140,15 @@
       }
 
       const c = data.compra;
-// QR Code enxuto — só o essencial para validação
-  const qrData = JSON.stringify({
-  codigo: c.codigo,
-  nome: c.nome,
-  cpf: c.cpf
-  });
+
+      // ✅ QR Code ENXUTO — só o essencial
+      const qrData = JSON.stringify({
+        codigo: c.codigo,
+        nome: c.nome,
+        cpf: c.cpf
+      });
+
+      console.log('📦 Tamanho do QR data:', qrData.length, 'chars');
 
       const statusClass = c.status === 'utilizado' ? 'utilizado' : 'pendente';
       const statusLabel = c.status === 'utilizado' ? '✅ Utilizado' : '⏳ Pendente';
@@ -463,17 +156,12 @@
       conteudo.innerHTML = `
         <div class="cartao">
           <div class="cartao-empresa">
-            <div class="cartao-empresa-logo">
-              <img src="logo.jpeg" alt="AHGA">
-            </div>
+            <div class="cartao-empresa-logo"><img src="logo.jpeg" alt="AHGA"></div>
             <div class="cartao-empresa-info">
               <div class="cartao-empresa-nome">AHGA TURISMO</div>
               <div class="cartao-empresa-sub">Excursões Botucatu</div>
             </div>
-            <div class="cartao-codigo">
-              CÓDIGO
-              <strong>${c.codigo || '—'}</strong>
-            </div>
+            <div class="cartao-codigo">CÓDIGO<strong>${c.codigo || '—'}</strong></div>
           </div>
 
           <div class="cartao-destino">
@@ -482,9 +170,7 @@
               <div class="cartao-destino-cidade">${abreviarDestino(c.excursaoDestino)}</div>
               <div class="cartao-destino-data">${formatarDataBR(c.excursaoData)}</div>
             </div>
-            <div class="cartao-destino-aviao">
-              <i class="fas fa-plane"></i>
-            </div>
+            <div class="cartao-destino-aviao"><i class="fas fa-plane"></i></div>
           </div>
 
           <div class="cartao-passageiro">
@@ -493,18 +179,9 @@
           </div>
 
           <div class="cartao-detalhes">
-            <div>
-              <div class="cartao-detalhe-label">RG</div>
-              <div class="cartao-detalhe-valor">${c.rg || '—'}</div>
-            </div>
-            <div>
-              <div class="cartao-detalhe-label">Pessoas</div>
-              <div class="cartao-detalhe-valor">${c.qtd || 1}</div>
-            </div>
-            <div>
-              <div class="cartao-detalhe-label">Categoria</div>
-              <div class="cartao-detalhe-valor">${c.categoria || 'Geral'}</div>
-            </div>
+            <div><div class="cartao-detalhe-label">RG</div><div class="cartao-detalhe-valor">${c.rg || '—'}</div></div>
+            <div><div class="cartao-detalhe-label">Pessoas</div><div class="cartao-detalhe-valor">${c.qtd || 1}</div></div>
+            <div><div class="cartao-detalhe-label">Categoria</div><div class="cartao-detalhe-valor">${c.categoria || 'Geral'}</div></div>
           </div>
 
           <div class="cartao-qrcode" id="qrBox">
@@ -513,9 +190,7 @@
 
           <span class="cartao-status ${statusClass}">${statusLabel}</span>
 
-          <div class="cartao-rodape">
-            Apresente este QR Code no embarque
-          </div>
+          <div class="cartao-rodape">Apresente este QR Code no embarque</div>
         </div>
       `;
 
@@ -524,10 +199,8 @@
       aguardarQRCode(function() {
         const qrBox = document.getElementById('qrBox');
         if (!qrBox) return;
-
         qrBox.innerHTML = '';
 
-        // ✅ qrcodejs usa essa API (diferente do qrcode.toCanvas)
         try {
           new QRCode(qrBox, {
             text: qrData,
@@ -535,7 +208,7 @@
             height: 220,
             colorDark: '#4a0f24',
             colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.H
+            correctLevel: QRCode.CorrectLevel.M  // ✅ M = mais capacidade
           });
           console.log('✅ QR Code gerado com sucesso!');
         } catch (err) {
@@ -559,21 +232,10 @@
     const img = document.querySelector('#qrBox img');
     const canvas = document.querySelector('#qrBox canvas');
     const alvo = img || canvas;
-
-    if (!alvo) {
-      alert('QR Code ainda não foi gerado. Aguarde um instante.');
-      return;
-    }
-
+    if (!alvo) { alert('QR Code ainda não foi gerado. Aguarde um instante.'); return; }
     const link = document.createElement('a');
     link.download = 'cartao-embarque-ahga.png';
-
-    if (canvas) {
-      link.href = canvas.toDataURL('image/png');
-    } else {
-      link.href = img.src;
-    }
-
+    if (canvas) { link.href = canvas.toDataURL('image/png'); } else { link.href = img.src; }
     link.click();
   }
 
