@@ -2110,3 +2110,349 @@ button, a, .btn-login, .app-nav-link, .app-logout,
   display: none !important;
   pointer-events: none !important;
 }
+/* ============================================================
+   LISTA DE PASSAGEIROS POR EXCURSÃO
+   ============================================================ */
+   .lista-modal {
+    max-width: 900px;
+    width: 95%;
+    max-height: 92vh;
+  }
+  
+  .lista-conteudo {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-right: 0.3rem;
+  }
+  
+  .lista-header {
+    background: linear-gradient(135deg, #fff0f5, #fff8e1);
+    border-radius: 1.2rem;
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+    border: 1.5px solid rgba(233, 30, 99, 0.15);
+  }
+  
+  .lista-header-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.9rem;
+    color: var(--text);
+    margin-bottom: 1rem;
+    font-weight: 600;
+  }
+  .lista-header-info span {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .lista-header-info i {
+    color: var(--ahga-rosa);
+  }
+  
+  .lista-header-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.8rem;
+  }
+  
+  .stat-box {
+    background: white;
+    border-radius: 0.9rem;
+    padding: 0.7rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    border: 1.5px solid var(--border);
+  }
+  .stat-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-light);
+    font-weight: 700;
+  }
+  .stat-value {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--ahga-rosa);
+  }
+  
+  /* Bloco por vendedor */
+  .lista-vendedor-bloco {
+    background: white;
+    border-radius: 1.2rem;
+    border: 1.5px solid var(--border);
+    margin-bottom: 1.2rem;
+    overflow: hidden;
+    box-shadow: 0 6px 18px -10px rgba(30, 43, 60, 0.15);
+  }
+  
+  .lista-vendedor-header {
+    background: linear-gradient(135deg, #f1f5fc, #e8eef9);
+    padding: 0.9rem 1.2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    border-bottom: 1.5px solid var(--border);
+  }
+  
+  .lista-vendedor-nome {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .lista-vendedor-nome i {
+    color: var(--ahga-rosa);
+  }
+  
+  .lista-vendedor-stats {
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+  }
+  .lista-vendedor-stats span {
+    background: white;
+    padding: 0.3rem 0.7rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  
+  /* Tabela */
+  .lista-tabela {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  
+  .lista-tabela thead {
+    background: #f7f9fe;
+  }
+  .lista-tabela th {
+    text-align: left;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-light);
+    font-weight: 800;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .lista-tabela td {
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .lista-tabela tbody tr:hover {
+    background: #fff5f9;
+  }
+  .lista-tabela tbody tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .lista-status {
+    padding: 0.25rem 0.6rem;
+    border-radius: 1rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .lista-status.pendente {
+    background: #fff3cd;
+    color: #7a5b1a;
+  }
+  .lista-status.ok {
+    background: #d4f5e5;
+    color: #0d7a4a;
+  }
+  
+  .lista-acoes-finais {
+    display: flex;
+    gap: 0.6rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1.5px dashed var(--border);
+    flex-wrap: wrap;
+  }
+  
+  @media (max-width: 700px) {
+    .lista-header-stats {
+      grid-template-columns: 1fr;
+    }
+    .lista-tabela {
+      font-size: 0.78rem;
+    }
+    .lista-tabela th,
+    .lista-tabela td {
+      padding: 0.5rem 0.6rem;
+    }
+    .lista-vendedor-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+  
+  @media print {
+    body * { visibility: hidden; }
+    .lista-modal,
+    .lista-modal * { visibility: visible; }
+    .lista-modal {
+      position: absolute;
+      inset: 0;
+      max-width: 100%;
+      box-shadow: none;
+    }
+    .modal-close,
+    .lista-acoes-finais { display: none !important; }
+    .lista-conteudo { max-height: none; overflow: visible; }
+  }
+  /* ============================================================
+   ABAS DA LISTA (Ônibus / Fechamento)
+   ============================================================ */
+.lista-abas {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.2rem;
+  background: #f1f5fc;
+  padding: 0.4rem;
+  border-radius: 1rem;
+  border: 1.5px solid var(--border);
+}
+
+.lista-aba {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: transparent;
+  border-radius: 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: inherit;
+}
+
+.lista-aba:hover {
+  background: rgba(233, 30, 99, 0.08);
+  color: var(--ahga-rosa);
+}
+
+.lista-aba.ativa {
+  background: linear-gradient(135deg, #e91e63 0%, #f5a623 100%);
+  color: white;
+  box-shadow: 0 6px 16px -6px rgba(233, 30, 99, 0.5);
+}
+
+/* ============================================================
+   LISTA DO ÔNIBUS (simples: Nome + RG)
+   ============================================================ */
+.lista-onibus-aviso,
+.lista-fechamento-aviso {
+  background: linear-gradient(135deg, #fff0f5, #fff8e1);
+  border-radius: 1rem;
+  padding: 0.8rem 1.2rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  border: 1.5px solid rgba(233, 30, 99, 0.15);
+}
+
+.lista-onibus-aviso i { color: #29a3d4; font-size: 1.1rem; }
+.lista-fechamento-aviso i { color: var(--ahga-rosa); font-size: 1.1rem; }
+
+.lista-tabela-onibus {
+  font-size: 1rem;
+}
+.lista-tabela-onibus th {
+  background: #e8eef9;
+  font-size: 0.75rem;
+}
+.lista-tabela-onibus td {
+  padding: 0.9rem 1rem;
+  font-size: 0.95rem;
+}
+.lista-tabela-onibus td strong {
+  font-size: 1rem;
+}
+
+/* ============================================================
+   TOTAL GERAL (Fechamento)
+   ============================================================ */
+.lista-total-geral {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 1.2rem;
+  background: linear-gradient(135deg, #1e2b3c, #2f405c);
+  border-radius: 1.2rem;
+  color: white;
+}
+
+.lista-total-geral-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.lista-total-geral-item .label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.75;
+  font-weight: 700;
+}
+.lista-total-geral-item .value {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: white;
+}
+.lista-total-geral-item.destaque .value {
+  color: #ffc857;
+  font-size: 1.8rem;
+}
+
+/* ============================================================
+   FOOTER DA TABELA (Subtotal por vendedor)
+   ============================================================ */
+.lista-tabela tfoot td {
+  border-top: 2px solid var(--border-strong);
+  padding: 0.8rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 700px) {
+  .lista-abas {
+    flex-direction: column;
+  }
+  .lista-total-geral {
+    grid-template-columns: 1fr;
+  }
+  .lista-tabela-onibus td,
+  .lista-tabela-onibus th {
+    padding: 0.6rem 0.5rem;
+    font-size: 0.85rem;
+  }
+}
+
+@media print {
+  .lista-abas { display: none !important; }
+}

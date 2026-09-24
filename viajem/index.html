@@ -572,6 +572,25 @@
   </div>
 </div>
 
+<!-- MODAL LISTA DE PASSAGEIROS (NOVO) -->
+<div class="modal-overlay" id="listaModal">
+  <div class="modal lista-modal">
+    <button class="modal-close" onclick="fecharLista()" type="button">
+      <i class="fas fa-times"></i>
+    </button>
+
+    <h3 id="listaTitulo"><i class="fas fa-users"></i> Lista de Passageiros</h3>
+    <p class="modal-sub">Passageiros confirmados organizados por vendedor</p>
+
+    <div id="listaConteudo" class="lista-conteudo">
+      <div class="empty-state">
+        <i class="fas fa-circle-notch fa-spin"></i>
+        <p>Carregando...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- TELAS FULLSCREEN -->
 <div class="fullscreen-results" id="resultsScreen">
   <div class="fullscreen-header">
@@ -649,6 +668,7 @@
 <script src="admin.js"></script>
 <script src="compra.js"></script>
 <script src="script.js"></script>
+<script src="lista.js"></script>
 
 <script>
   window.abrirLogin    = window.abrirLogin    || function(){ console.warn('admin.js não carregou'); };
@@ -671,6 +691,8 @@
     if (input.type === 'password') { input.type='text'; icon.classList.replace('fa-eye','fa-eye-slash'); }
     else { input.type='password'; icon.classList.replace('fa-eye-slash','fa-eye'); }
   };
+  window.abrirListaExcursao = window.abrirListaExcursao || function(){ console.warn('lista.js não carregou'); };
+  window.fecharLista = window.fecharLista || function(){ const m=document.getElementById('listaModal'); if(m) m.classList.remove('active'); document.body.style.overflow=''; };
   console.log('✅ Fallbacks de segurança aplicados');
 </script>
 </body>

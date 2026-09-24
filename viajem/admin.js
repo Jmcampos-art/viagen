@@ -355,6 +355,9 @@
            '<td>' + (exc.vagas || 0) + '</td>' +
            '<td><span class="autor-badge">' + (exc.criadoPor || '—') + '</span></td>' +
            '<td class="admin-actions-cell">' +
+             '<button class="icon-btn" onclick=\'abrirListaExcursao("' + exc.id + '")\' type="button" title="Ver lista de passageiros" style="background:linear-gradient(135deg,#e91e63,#f5a623);color:white;">' +
+               '<i class="fas fa-users"></i>' +
+             '</button>' +
              (sessao.podeEditar ? '<button class="icon-btn edit" onclick=\'editarExcursao("' + exc.id + '")\' type="button" title="Editar"><i class="fas fa-pen"></i></button>' : '') +
              (sessao.podeExcluir ? '<button class="icon-btn delete" onclick=\'excluirExcursao("' + exc.id + '", "' + exc.titulo.replace(/"/g, '&quot;') + '")\' type="button" title="Excluir"><i class="fas fa-trash"></i></button>' : '') +
            '</td>' +

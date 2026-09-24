@@ -182,6 +182,9 @@
          return;
        }
    
+       // ✅ IDENTIFICA O VENDEDOR SELECIONADO
+       const vendedorSelecionado = WHATSAPP_NUMEROS.find(v => v.numero === vendedorNumero);
+   
        const codigo = gerarCodigoEmbarque();
    
        const compra = {
@@ -190,11 +193,16 @@
          excursaoTitulo: excursaoSelecionada.titulo,
          excursaoDestino: excursaoSelecionada.destino,
          excursaoData: excursaoSelecionada.dataIda,
+         categoria: excursaoSelecionada.categoria || 'Geral',
          nome, rg, cpf, telefone, email, obs,
          qtd,
          total: Number(excursaoSelecionada.preco) * qtd,
          status: 'pendente',
-         criadoEm: new Date().toISOString()
+         criadoEm: new Date().toISOString(),
+         // ✅ SALVA O VENDEDOR RESPONSÁVEL
+         vendedorNome: vendedorSelecionado ? vendedorSelecionado.nome : 'Não informado',
+         vendedorId: vendedorSelecionado ? vendedorSelecionado.id : null,
+         vendedorNumero: vendedorNumero
        };
    
        try {
