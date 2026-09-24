@@ -8,7 +8,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="config.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js"></script>
+  <!-- ✅ CDN que funciona -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
     * {
@@ -32,7 +33,6 @@
       max-width: 380px;
     }
 
-    /* ===== CARTÃO ===== */
     .cartao {
       background: linear-gradient(135deg, #7a1f3d 0%, #4a0f24 100%);
       border-radius: 1.5rem;
@@ -128,9 +128,7 @@
       z-index: 1;
     }
 
-    .cartao-destino-bloco {
-      flex: 1;
-    }
+    .cartao-destino-bloco { flex: 1; }
 
     .cartao-destino-label {
       font-size: 0.6rem;
@@ -228,8 +226,8 @@
       z-index: 1;
     }
 
-    .cartao-qrcode canvas,
-    .cartao-qrcode img {
+    .cartao-qrcode img,
+    .cartao-qrcode canvas {
       width: 100% !important;
       height: auto !important;
       display: block;
@@ -406,9 +404,8 @@
     return primeiraPalavra.toUpperCase();
   }
 
-  // Aguarda a biblioteca QRCode ficar disponível (máx 5s)
   function aguardarQRCode(callback, tentativas = 0) {
-    if (typeof QRCode !== 'undefined' && typeof QRCode.toCanvas === 'function') {
+    if (typeof QRCode !== 'undefined') {
       callback();
       return;
     }
@@ -439,21 +436,15 @@
     }
 
     try {
-      console.log('🔍 Buscando compra:', codigo);
-      console.log('🌐 API_URL:', API_URL);
-
       const r = await fetch(`${API_URL}/api/compras/${codigo}`);
       const data = await r.json();
-
-      console.log('📦 Resposta da API:', data);
 
       if (!r.ok || !data.compra) {
         conteudo.innerHTML = `
           <div class="estado erro">
             <i class="fas fa-times-circle"></i>
             <h3>Compra não encontrada</h3>
-            <p>O código <strong>${codigo}</strong> não foi localizado.<br>
-            Verifique o link ou peça ao vendedor para reenviar.</p>
+            <p>O código <strong>${codigo}</strong> não foi localizado.</p>
           </div>`;
         return;
       }
@@ -535,29 +526,27 @@
 
       document.getElementById('acoes').style.display = 'flex';
 
-      // Aguarda a lib do QR Code carregar e gera
       aguardarQRCode(function() {
         const qrBox = document.getElementById('qrBox');
         if (!qrBox) return;
 
         qrBox.innerHTML = '';
 
-        const canvas = document.createElement('canvas');
-        qrBox.appendChild(canvas);
-
-        QRCode.toCanvas(canvas, qrData, {
-          width: 240,
-          margin: 1,
-          errorCorrectionLevel: 'H',
-          color: { dark: '#4a0f24', light: '#ffffff' }
-        }, function(err) {
-          if (err) {
-            console.error('❌ Erro ao gerar QR:', err);
-            qrBox.innerHTML = '<div class="qr-erro">Erro ao gerar QR Code<br>' + err.message + '</div>';
-          } else {
-            console.log('✅ QR Code gerado com sucesso!');
-          }
-        });
+        // ✅ qrcodejs usa essa API (diferente do qrcode.toCanvas)
+        try {
+          new QRCode(qrBox, {
+            text: qrData,
+            width: 220,
+            height: 220,
+            colorDark: '#4a0f24',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+          });
+          console.log('✅ QR Code gerado com sucesso!');
+        } catch (err) {
+          console.error('❌ Erro ao gerar QR:', err);
+          qrBox.innerHTML = '<div class="qr-erro">Erro ao gerar QR Code<br>' + err.message + '</div>';
+        }
       });
 
     } catch (err) {
@@ -567,20 +556,29 @@
           <i class="fas fa-exclamation-triangle"></i>
           <h3>Erro ao carregar</h3>
           <p>${err.message}</p>
-          <p style="font-size:0.8rem;color:#94a3b8;margin-top:1rem;">Verifique se o backend está rodando.</p>
         </div>`;
     }
   }
 
   function baixarCartao() {
+    const img = document.querySelector('#qrBox img');
     const canvas = document.querySelector('#qrBox canvas');
-    if (!canvas) {
+    const alvo = img || canvas;
+
+    if (!alvo) {
       alert('QR Code ainda não foi gerado. Aguarde um instante.');
       return;
     }
+
     const link = document.createElement('a');
     link.download = 'cartao-embarque-ahga.png';
-    link.href = canvas.toDataURL('image/png');
+
+    if (canvas) {
+      link.href = canvas.toDataURL('image/png');
+    } else {
+      link.href = img.src;
+    }
+
     link.click();
   }
 
