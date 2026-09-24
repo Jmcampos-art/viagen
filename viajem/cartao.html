@@ -7,49 +7,307 @@
   <link rel="icon" type="image/png" href="logo.jpeg">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="config.js"></script>
 
   <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', system-ui, sans-serif;
+    }
+
     body {
       background: linear-gradient(145deg, #f8faff 0%, #eef2f9 100%);
       min-height: 100vh;
-      padding: 2rem 1rem;
+      padding: 1.5rem 1rem;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
     }
-    .cartao-page {
-      max-width: 600px;
-      margin: 0 auto;
+
+    .cartao-wrapper {
+      width: 100%;
+      max-width: 380px;
     }
-    .cartao-page-header {
-      text-align: center;
-      margin-bottom: 2rem;
+
+    /* ===== CARTÃO ===== */
+    .cartao {
+      background: linear-gradient(135deg, #7a1f3d 0%, #4a0f24 100%);
+      border-radius: 1.5rem;
+      padding: 1.5rem;
+      color: white;
+      box-shadow: 0 25px 50px -12px rgba(74, 15, 36, 0.5);
+      position: relative;
+      overflow: hidden;
     }
-    .cartao-page-header img {
-      height: 80px;
-      margin-bottom: 0.5rem;
+
+    .cartao::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(233, 30, 99, 0.15) 0%, transparent 70%);
+      pointer-events: none;
     }
-    .cartao-page-header h1 {
-      font-size: 1.3rem;
-      color: var(--text);
+
+    /* Cabeçalho da empresa */
+    .cartao-empresa {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 1.2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      position: relative;
+      z-index: 1;
     }
-    .cartao-page-header p {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-    }
-    .loading, .erro {
+
+    .cartao-empresa-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
       background: white;
-      border-radius: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px;
+      flex-shrink: 0;
+    }
+
+    .cartao-empresa-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 50%;
+    }
+
+    .cartao-empresa-info {
+      flex: 1;
+    }
+
+    .cartao-empresa-nome {
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      line-height: 1.1;
+    }
+
+    .cartao-empresa-sub {
+      font-size: 0.7rem;
+      opacity: 0.75;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    .cartao-codigo {
+      text-align: right;
+      font-size: 0.6rem;
+      opacity: 0.9;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .cartao-codigo strong {
+      display: block;
+      font-size: 0.75rem;
+      letter-spacing: 1px;
+      margin-top: 0.1rem;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* Destino */
+    .cartao-destino {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cartao-destino-bloco {
+      flex: 1;
+    }
+
+    .cartao-destino-label {
+      font-size: 0.6rem;
+      opacity: 0.65;
+      letter-spacing: 1px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .cartao-destino-cidade {
+      font-size: 1.6rem;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      line-height: 1.1;
+      margin-top: 0.2rem;
+      text-transform: uppercase;
+      word-break: break-word;
+    }
+
+    .cartao-destino-data {
+      font-size: 0.75rem;
+      opacity: 0.8;
+      margin-top: 0.2rem;
+      font-weight: 600;
+    }
+
+    .cartao-destino-aviao {
+      font-size: 1.3rem;
+      color: #ffb347;
+      flex-shrink: 0;
+    }
+
+    /* Passageiro */
+    .cartao-passageiro {
+      margin-bottom: 1rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cartao-passageiro-label {
+      font-size: 0.6rem;
+      opacity: 0.65;
+      letter-spacing: 1px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .cartao-passageiro-nome {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-top: 0.2rem;
+      word-break: break-word;
+    }
+
+    /* Detalhes (grid) */
+    .cartao-detalhes {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.6rem;
+      padding: 0.8rem 0;
+      border-top: 1px dashed rgba(255, 255, 255, 0.2);
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
+      margin-bottom: 1.2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cartao-detalhe-label {
+      font-size: 0.55rem;
+      opacity: 0.6;
+      letter-spacing: 0.8px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .cartao-detalhe-valor {
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      margin-top: 0.15rem;
+      word-break: break-word;
+    }
+
+    /* QR Code */
+    .cartao-qrcode {
+      background: white;
+      border-radius: 1rem;
+      padding: 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 0.8rem;
+      max-width: 220px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cartao-qrcode canvas {
+      width: 100% !important;
+      height: auto !important;
+      display: block;
+    }
+
+    /* Status */
+    .cartao-status {
+      display: block;
+      text-align: center;
+      padding: 0.3rem 0.7rem;
+      border-radius: 20px;
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin: 0.5rem auto 0;
+      max-width: 160px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cartao-status.pendente {
+      background: rgba(255, 179, 71, 0.25);
+      color: #ffb347;
+      border: 1px solid rgba(255, 179, 71, 0.4);
+    }
+
+    .cartao-status.utilizado {
+      background: rgba(34, 181, 115, 0.25);
+      color: #4ade80;
+      border: 1px solid rgba(34, 181, 115, 0.4);
+    }
+
+    /* Rodapé do cartão */
+    .cartao-rodape {
+      text-align: center;
+      font-size: 0.65rem;
+      opacity: 0.7;
+      letter-spacing: 0.3px;
+      margin-top: 1rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Loading / Erro */
+    .estado {
+      background: white;
+      border-radius: 1.5rem;
       padding: 3rem 2rem;
       text-align: center;
       box-shadow: 0 15px 35px -12px rgba(30, 43, 60, 0.15);
+      max-width: 380px;
+      margin: 0 auto;
     }
-    .loading i, .erro i {
+
+    .estado i {
       font-size: 2.5rem;
-      color: var(--ahga-rosa);
+      color: #e91e63;
       margin-bottom: 1rem;
     }
-    .erro i { color: var(--danger); }
+
+    .estado.erro i { color: #e74c3c; }
+    .estado h3 {
+      font-size: 1.1rem;
+      color: #1e2b3c;
+      margin-bottom: 0.5rem;
+      font-weight: 800;
+    }
+    .estado p {
+      font-size: 0.9rem;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    /* Ações (fora do cartão) */
     .acoes {
       display: flex;
       gap: 0.5rem;
@@ -57,29 +315,70 @@
       justify-content: center;
       flex-wrap: wrap;
     }
+
+    .acao-btn {
+      padding: 0.8rem 1.3rem;
+      border-radius: 2rem;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.25s;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: inherit;
+    }
+
+    .acao-btn.primario {
+      background: linear-gradient(135deg, #e91e63 0%, #f5a623 100%);
+      color: white;
+      box-shadow: 0 8px 20px -6px rgba(233, 30, 99, 0.5);
+    }
+
+    .acao-btn.primario:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px -6px rgba(233, 30, 99, 0.7);
+    }
+
+    .acao-btn.secundario {
+      background: white;
+      color: #1e2b3c;
+      border: 1.5px solid #cbd5e1;
+    }
+
+    .acao-btn.secundario:hover {
+      background: #f1f5fc;
+      transform: translateY(-2px);
+    }
+
+    /* Impressão */
+    @media print {
+      body { background: white; padding: 0; }
+      .acoes { display: none; }
+      .cartao {
+        box-shadow: none;
+        border-radius: 0;
+      }
+    }
   </style>
 </head>
 <body>
 
-<div class="cartao-page">
-  <div class="cartao-page-header">
-    <img src="logo.jpeg" alt="AHGA Turismo">
-    <h1>Cartão de Embarque</h1>
-    <p>Apresente este QR Code no dia da excursão</p>
-  </div>
-
+<div class="cartao-wrapper">
   <div id="conteudo">
-    <div class="loading">
+    <div class="estado">
       <i class="fas fa-circle-notch fa-spin"></i>
-      <p>Carregando seu cartão...</p>
+      <h3>Carregando cartão...</h3>
+      <p>Aguarde um instante</p>
     </div>
   </div>
 
   <div class="acoes" id="acoes" style="display:none;">
-    <button class="btn-secondary" onclick="baixarCartao()">
+    <button class="acao-btn secundario" onclick="baixarCartao()">
       <i class="fas fa-download"></i> Baixar QR
     </button>
-    <button class="btn-primary" onclick="window.print()">
+    <button class="acao-btn primario" onclick="window.print()">
       <i class="fas fa-print"></i> Imprimir
     </button>
   </div>
@@ -92,8 +391,14 @@
     if (!iso) return '—';
     const d = new Date(iso + 'T00:00:00');
     if (isNaN(d)) return iso;
-    const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-    return `${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`;
+    const meses = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+    return `${String(d.getDate()).padStart(2, '0')} ${meses[d.getMonth()]}`;
+  }
+
+  function abreviarDestino(destino) {
+    if (!destino) return '—';
+    const primeiraPalavra = destino.split(/[,\-–]/)[0].trim();
+    return primeiraPalavra.toUpperCase();
   }
 
   async function carregarCartao() {
@@ -103,10 +408,10 @@
 
     if (!codigo) {
       conteudo.innerHTML = `
-        <div class="erro">
+        <div class="estado erro">
           <i class="fas fa-exclamation-triangle"></i>
           <h3>Código não informado</h3>
-          <p>Este link está incompleto. Peça ao vendedor o link correto.</p>
+          <p>Este link está incompleto.<br>Peça ao vendedor o link correto.</p>
         </div>`;
       return;
     }
@@ -117,63 +422,106 @@
 
       if (!r.ok || !data.compra) {
         conteudo.innerHTML = `
-          <div class="erro">
+          <div class="estado erro">
             <i class="fas fa-times-circle"></i>
             <h3>Compra não encontrada</h3>
-            <p>O código <strong>${codigo}</strong> não foi localizado no sistema.</p>
+            <p>O código <strong>${codigo}</strong> não foi localizado.<br>Verifique o link ou peça ao vendedor para reenviar.</p>
           </div>`;
         return;
       }
 
       const c = data.compra;
 
-      // Gera QR Code
       const qrData = JSON.stringify({
         codigo: c.codigo,
         nome: c.nome,
         cpf: c.cpf,
+        rg: c.rg,
         excursao: c.excursaoTitulo,
+        destino: c.excursaoDestino,
         qtd: c.qtd,
         total: c.total
       });
 
+      const statusClass = c.status === 'utilizado' ? 'utilizado' : 'pendente';
+      const statusLabel = c.status === 'utilizado' ? '✅ Utilizado' : '⏳ Pendente';
+
       conteudo.innerHTML = `
-        <div class="embarque-card">
-          <div class="embarque-header">
-            <img src="logo.jpeg" alt="AHGA" class="embarque-logo">
-            <div class="embarque-titulo">AHGA Turismo</div>
+        <div class="cartao">
+          <div class="cartao-empresa">
+            <div class="cartao-empresa-logo">
+              <img src="logo.jpeg" alt="AHGA">
+            </div>
+            <div class="cartao-empresa-info">
+              <div class="cartao-empresa-nome">AHGA TURISMO</div>
+              <div class="cartao-empresa-sub">Excursões Botucatu</div>
+            </div>
+            <div class="cartao-codigo">
+              CÓDIGO
+              <strong>${c.codigo || '—'}</strong>
+            </div>
           </div>
-          <div class="embarque-body">
-            <div class="embarque-info">
-              <div class="embarque-row"><span>Passageiro:</span><strong>${c.nome}</strong></div>
-              <div class="embarque-row"><span>RG:</span><strong>${c.rg || '—'}</strong></div>
-              <div class="embarque-row"><span>CPF:</span><strong>${c.cpf}</strong></div>
-              <div class="embarque-row"><span>Excursão:</span><strong>${c.excursaoTitulo}</strong></div>
-              <div class="embarque-row"><span>Destino:</span><strong>${c.excursaoDestino}</strong></div>
-              <div class="embarque-row"><span>Data:</span><strong>${formatarDataBR(c.excursaoData)}</strong></div>
-              <div class="embarque-row"><span>Pessoas:</span><strong>${c.qtd}</strong></div>
-              <div class="embarque-row"><span>Código:</span><strong>${c.codigo}</strong></div>
-              <div class="embarque-row"><span>Status:</span><strong>${c.status === 'utilizado' ? '✅ Utilizado' : '⏳ Pendente'}</strong></div>
+
+          <div class="cartao-destino">
+            <div class="cartao-destino-bloco">
+              <div class="cartao-destino-label">Destino</div>
+              <div class="cartao-destino-cidade">${abreviarDestino(c.excursaoDestino)}</div>
+              <div class="cartao-destino-data">${formatarDataBR(c.excursaoData)}</div>
             </div>
-            <div class="embarque-qr">
-              <canvas id="qrcodeCanvas"></canvas>
+            <div class="cartao-destino-aviao">
+              <i class="fas fa-plane"></i>
             </div>
+          </div>
+
+          <div class="cartao-passageiro">
+            <div class="cartao-passageiro-label">Passageiro</div>
+            <div class="cartao-passageiro-nome">${c.nome || '—'}</div>
+          </div>
+
+          <div class="cartao-detalhes">
+            <div>
+              <div class="cartao-detalhe-label">RG</div>
+              <div class="cartao-detalhe-valor">${c.rg || '—'}</div>
+            </div>
+            <div>
+              <div class="cartao-detalhe-label">Pessoas</div>
+              <div class="cartao-detalhe-valor">${c.qtd || 1}</div>
+            </div>
+            <div>
+              <div class="cartao-detalhe-label">Categoria</div>
+              <div class="cartao-detalhe-valor">${c.categoria || 'Geral'}</div>
+            </div>
+          </div>
+
+          <div class="cartao-qrcode">
+            <canvas id="qrcodeCanvas"></canvas>
+          </div>
+
+          <span class="cartao-status ${statusClass}">${statusLabel}</span>
+
+          <div class="cartao-rodape">
+            Apresente este QR Code no embarque
           </div>
         </div>
       `;
 
       const canvas = document.getElementById('qrcodeCanvas');
-      QRCode.toCanvas(canvas, qrData, {
-        width: 200,
-        margin: 1,
-        color: { dark: '#1e2b3c', light: '#ffffff' }
-      });
+      if (typeof QRCode !== 'undefined') {
+        QRCode.toCanvas(canvas, qrData, {
+          width: 320,
+          margin: 2,
+          errorCorrectionLevel: 'H',
+          color: { dark: '#4a0f24', light: '#ffffff' }
+        }, function(err) {
+          if (err) console.error('Erro QR:', err);
+        });
+      }
 
       document.getElementById('acoes').style.display = 'flex';
     } catch (err) {
       console.error(err);
       conteudo.innerHTML = `
-        <div class="erro">
+        <div class="estado erro">
           <i class="fas fa-exclamation-triangle"></i>
           <h3>Erro ao carregar</h3>
           <p>${err.message}</p>
