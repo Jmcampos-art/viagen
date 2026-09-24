@@ -450,17 +450,12 @@
       }
 
       const c = data.compra;
-
-      const qrData = JSON.stringify({
-        codigo: c.codigo,
-        nome: c.nome,
-        cpf: c.cpf,
-        rg: c.rg,
-        excursao: c.excursaoTitulo,
-        destino: c.excursaoDestino,
-        qtd: c.qtd,
-        total: c.total
-      });
+// QR Code enxuto — só o essencial para validação
+  const qrData = JSON.stringify({
+  codigo: c.codigo,
+  nome: c.nome,
+  cpf: c.cpf
+  });
 
       const statusClass = c.status === 'utilizado' ? 'utilizado' : 'pendente';
       const statusLabel = c.status === 'utilizado' ? '✅ Utilizado' : '⏳ Pendente';
