@@ -964,7 +964,7 @@ app.post('/api/excursoes', exigirAdminHeader, async (req, res) => {
       dataIda,
       dataVolta: dataVolta || '',
       preco: Number(preco),
-      vagas: Number(vagas) || 0,
+      vagas: Number(vagas) || 0,   // ← se não preencher, vira 0
       inclui: Array.isArray(inclui) ? inclui : [],
       roteiro: Array.isArray(roteiro) ? roteiro : [],
       categoria: categoria || 'Geral',

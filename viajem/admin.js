@@ -75,6 +75,28 @@
    }
    
    /* ============================================================
+      UTILITÁRIO — Verifica se a excursão tem vagas
+      ✅ REGRA: vagas vazio/0/null/undefined = ILIMITADO
+      ============================================================ */
+   function analisarVagas(exc) {
+     const vagasNum = Number(exc.vagas);
+     const temControleVagas = Number.isFinite(vagasNum) && vagasNum > 0;
+     const semVagas = temControleVagas && vagasNum <= 0;
+   
+     let textoCurto = 'Vagas disponíveis';       // card público
+     let textoLongo = 'Vagas disponíveis';       // modal detalhes
+     let textoAdmin = 'Ilimitado';               // tabela admin
+   
+     if (temControleVagas) {
+       textoCurto = vagasNum > 0 ? vagasNum + ' vagas' : 'Vagas esgotadas';
+       textoLongo = vagasNum > 0 ? vagasNum + ' vagas disponíveis' : 'Vagas esgotadas';
+       textoAdmin = String(vagasNum);
+     }
+   
+     return { temControleVagas, semVagas, textoCurto, textoLongo, textoAdmin };
+   }
+   
+   /* ============================================================
       HEADER
       ============================================================ */
    function atualizarHeader() {
@@ -244,9 +266,10 @@
      const img = exc.imagem || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1600&q=80';
      const dataIda = formatarData(exc.dataIda);
      const dataVolta = exc.dataVolta ? formatarData(exc.dataVolta) : null;
-     const vagas = exc.vagas > 0 ? exc.vagas + ' vagas' : 'Vagas esgotadas';
      const preco = Number(exc.preco || 0).toLocaleString('pt-BR');
-     const semVagas = !exc.vagas || exc.vagas <= 0;
+   
+     // ✅ REGRA DE VAGAS
+     const v = analisarVagas(exc);
    
      return '<div class="excursao-card">' +
        '<div class="excursao-img" style="background-image: linear-gradient(0deg, rgba(15,43,75,0.5), rgba(15,43,75,0.1)), url(\'' + img + '\');">' +
@@ -266,13 +289,13 @@
              '<span class="preco-por">por pessoa</span>' +
            '</div>' +
            '<div class="excursao-acoes">' +
-             '<span class="excursao-vagas">' + vagas + '</span>' +
+             '<span class="excursao-vagas">' + v.textoCurto + '</span>' +
              '<div style="display:flex; gap:0.4rem; flex-wrap:wrap; justify-content:flex-end;">' +
                '<button class="btn-secondary small" onclick=\'verDetalhesExcursao("' + exc.id + '")\' type="button">' +
                  '<i class="fas fa-info-circle"></i> Detalhes' +
                '</button>' +
-               '<button class="btn-primary small" onclick=\'abrirCompra("' + exc.id + '")\' type="button"' + (semVagas ? ' disabled style="opacity:0.5;cursor:not-allowed;"' : '') + '>' +
-                 '<i class="fas fa-ticket-alt"></i> ' + (semVagas ? 'Esgotado' : 'Comprar') +
+               '<button class="btn-primary small" onclick=\'abrirCompra("' + exc.id + '")\' type="button"' + (v.semVagas ? ' disabled style="opacity:0.5;cursor:not-allowed;"' : '') + '>' +
+                 '<i class="fas fa-ticket-alt"></i> ' + (v.semVagas ? 'Esgotado' : 'Comprar') +
                '</button>' +
              '</div>' +
            '</div>' +
@@ -295,7 +318,9 @@
        const roteiro = (exc.roteiro || []).map(function(r) {
          return '<li><i class="fas fa-circle-dot"></i> ' + r + '</li>';
        }).join('');
-       const semVagas = !exc.vagas || exc.vagas <= 0;
+   
+       // ✅ REGRA DE VAGAS
+       const v = analisarVagas(exc);
    
        document.getElementById('modalContent').innerHTML =
          '<button class="modal-close" onclick="closeModal()" type="button"><i class="fas fa-times"></i></button>' +
@@ -308,12 +333,12 @@
          '<div class="modal-total">' +
            '<span>Valor por pessoa</span>' +
            '<strong>R$ ' + Number(exc.preco || 0).toLocaleString('pt-BR') + '</strong>' +
-           '<small>' + (exc.vagas > 0 ? exc.vagas + ' vagas disponíveis' : 'Vagas esgotadas') + '</small>' +
+           '<small>' + v.textoLongo + '</small>' +
          '</div>' +
          '<div class="modal-actions" style="display:flex; gap:0.6rem; margin-top:1rem;">' +
            '<button class="btn-secondary" style="flex:1;" onclick="closeModal()" type="button"><i class="fas fa-times"></i> Fechar</button>' +
-           '<button class="btn-primary" style="flex:2;" onclick=\'closeModal(); abrirCompra("' + exc.id + '")\' type="button"' + (semVagas ? ' disabled' : '') + '>' +
-             '<i class="fas fa-ticket-alt"></i> ' + (semVagas ? 'Vagas esgotadas' : 'Comprar agora') +
+           '<button class="btn-primary" style="flex:2;" onclick=\'closeModal(); abrirCompra("' + exc.id + '")\' type="button"' + (v.semVagas ? ' disabled' : '') + '>' +
+             '<i class="fas fa-ticket-alt"></i> ' + (v.semVagas ? 'Vagas esgotadas' : 'Comprar agora') +
            '</button>' +
          '</div>';
    
@@ -347,12 +372,18 @@
    
        let linhas = '';
        lista.forEach(function(exc) {
+         const v = analisarVagas(exc);
+   
          linhas += '<tr>' +
            '<td><strong>' + exc.titulo + '</strong></td>' +
            '<td>' + exc.destino + '</td>' +
            '<td>' + formatarData(exc.dataIda) + '</td>' +
            '<td>R$ ' + Number(exc.preco || 0).toLocaleString('pt-BR') + '</td>' +
-           '<td>' + (exc.vagas || 0) + '</td>' +
+           '<td>' + (
+             v.temControleVagas
+               ? v.textoAdmin
+               : '<span style="color:#64748b;font-size:0.85rem;font-style:italic;">Ilimitado</span>'
+           ) + '</td>' +
            '<td><span class="autor-badge">' + (exc.criadoPor || '—') + '</span></td>' +
            '<td class="admin-actions-cell">' +
              '<button class="icon-btn" onclick=\'abrirListaExcursao("' + exc.id + '")\' type="button" title="Ver lista de passageiros" style="background:linear-gradient(135deg,#e91e63,#f5a623);color:white;">' +
@@ -464,8 +495,8 @@
        document.getElementById('excDestino').value = exc.destino || '';
        document.getElementById('excDataIda').value = exc.dataIda || '';
        document.getElementById('excDataVolta').value = exc.dataVolta || '';
-       document.getElementById('excPreco').value = exc.preco 
-         ? Number(exc.preco).toLocaleString('pt-BR') 
+       document.getElementById('excPreco').value = exc.preco
+         ? Number(exc.preco).toLocaleString('pt-BR')
          : '';
        document.getElementById('excVagas').value = exc.vagas || '';
        document.getElementById('excCategoria').value = exc.categoria || 'Geral';
