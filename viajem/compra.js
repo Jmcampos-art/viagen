@@ -158,7 +158,6 @@
      document.getElementById('formCompra')?.addEventListener('submit', async (e) => {
        e.preventDefault();
    
-       // ✅ Evita clique duplo
        if (enviandoCompra) {
          console.warn('⏳ Compra já sendo enviada...');
          return;
@@ -213,7 +212,6 @@
          vendedorNumero: vendedorNumero
        };
    
-       // ✅ Trava o botão
        enviandoCompra = true;
        const btn = document.getElementById('btnEnviarCompra');
        if (btn) {
@@ -396,7 +394,7 @@
      document.getElementById('embQtd').textContent = compra.qtd + ' pessoa(s)';
      document.getElementById('embCodigo').textContent = compra.codigo;
    
-     // ✅ QR Code só com o código (o servidor busca o resto)
+     // ✅ QR Code só com o código
      const qrData = compra.codigo;
    
      const canvas = document.getElementById('qrcodeCanvas');
@@ -496,43 +494,69 @@
    });
    
    /* ============================================================
-      PROCESSA QR CODE LIDO (aceita 2 formatos)
+      PROCESSA QR CODE LIDO (VERSÃO ROBUSTA - 4 tentativas)
       ============================================================ */
    async function processarQRCode(texto) {
      const resultado = document.getElementById('leitorResultado');
      resultado.style.display = 'block';
    
-     // ✅ Aceita 2 formatos: código puro OU JSON antigo
+     // ✅ Limpa o texto (remove espaços, quebras de linha, aspas)
+     let textoLimpo = (texto || '').trim().replace(/^["']|["']$/g, '');
+   
+     console.log('🔍 QR LIDO (bruto):', JSON.stringify(texto));
+     console.log('🔍 QR LIDO (limpo):', JSON.stringify(textoLimpo));
+   
      let codigo = null;
    
+     // ===== Tentativa 1: JSON =====
      try {
-       const dados = JSON.parse(texto);
+       const dados = JSON.parse(textoLimpo);
        if (dados && dados.codigo) {
-         codigo = dados.codigo;
+         codigo = String(dados.codigo).trim();
+         console.log('✅ Formato JSON detectado:', codigo);
        }
-     } catch {
-       codigo = texto.trim();
+     } catch (e) {
+       // Não é JSON, segue para próxima tentativa
      }
    
+     // ===== Tentativa 2: texto puro (só o código) =====
      if (!codigo) {
-       resultado.innerHTML = `
-         <div class="leitor-erro">
-           <i class="fas fa-times-circle"></i>
-           <h4>QR Code inválido</h4>
-           <p>Não foi possível identificar um código de embarque.</p>
-         </div>`;
-       return;
+       codigo = textoLimpo;
+       console.log('✅ Formato texto puro:', codigo);
      }
    
-     if (!codigo.startsWith('AHGA-')) {
+     // ===== Tentativa 3: regex — procura AHGA-XXXXXXXX em qualquer lugar =====
+     if (!codigo || !codigo.includes('AHGA-')) {
+       const match = textoLimpo.match(/AHGA-[A-Z0-9]{6,10}/);
+       if (match) {
+         codigo = match[0];
+         console.log('✅ Código extraído via regex:', codigo);
+       }
+     }
+   
+     // ===== Tentativa 4: remove caracteres estranhos antes/depois =====
+     if (codigo) {
+       codigo = codigo.replace(/[^A-Z0-9-]/gi, '').toUpperCase();
+       console.log('✅ Código final normalizado:', codigo);
+     }
+   
+     // ❌ Nenhum código válido encontrado
+     if (!codigo || !codigo.startsWith('AHGA-')) {
        resultado.innerHTML = `
          <div class="leitor-erro">
            <i class="fas fa-times-circle"></i>
            <h4>QR Code inválido</h4>
            <p>Este código não pertence à AHGA Turismo.</p>
-           <p style="font-size:0.78rem; margin-top:0.5rem; opacity:0.6; word-break:break-all;">
-             Lido: <code>${codigo.substring(0, 40)}${codigo.length > 40 ? '...' : ''}</code>
-           </p>
+           <details style="margin-top:0.6rem; text-align:left;">
+             <summary style="cursor:pointer; font-size:0.78rem; opacity:0.7;">Ver detalhes técnicos</summary>
+             <p style="font-size:0.72rem; margin-top:0.4rem; opacity:0.6; word-break:break-all;">
+               <strong>Lido:</strong><br>
+               <code>${textoLimpo.substring(0, 200)}</code>
+             </p>
+             <p style="font-size:0.72rem; margin-top:0.3rem; opacity:0.6;">
+               <strong>Esperado:</strong> <code>AHGA-XXXXXXXX</code>
+             </p>
+           </details>
          </div>`;
        return;
      }
@@ -601,7 +625,7 @@
          return;
        }
    
-       // ✅ Sucesso
+       // ✅ Sucesso — valida embarque
        await fetch(`${API_URL_COMPRA}/api/compras/${codigo}/validar`, {
          method: 'POST'
        });
@@ -645,4 +669,4 @@
    window.enviarSolicitacaoCartao = enviarSolicitacaoCartao;
    window.processarQRCode = processarQRCode;
    
-   console.log('✅ compra.js carregado com sucesso');
+   console.log('✅ compra.js carregado com sucesso (leitor robusto v2)');
