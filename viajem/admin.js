@@ -3,7 +3,7 @@
    ============================================================ */
 
 const API_URL_ADMIN = window.API_URL || 'http://localhost:3000';
-const URL_SITE_PUBLICO = 'https://ahgaturismo.netlify.app'; // ← troque pela sua URL real
+const URL_SITE_PUBLICO = 'https://ahgaturismo.netlify.app';
 
 /* ============================================================
    USUÁRIOS AUTORIZADOS
@@ -387,6 +387,9 @@ async function carregarExcursoesAdmin() {
           '<button class="icon-btn" onclick=\'abrirListaExcursao("' + exc.id + '")\' type="button" title="Ver lista de passageiros" style="background:linear-gradient(135deg,#e91e63,#f5a623);color:white;">' +
             '<i class="fas fa-users"></i>' +
           '</button>' +
+          '<button class="icon-btn" onclick=\'notificarExcursao("' + exc.id + '")\' type="button" title="Notificar passageiros" style="background:linear-gradient(135deg,#25D366,#128C7E);color:white;">' +
+            '<i class="fab fa-whatsapp"></i>' +
+          '</button>' +
           (sessao.podeEditar ? '<button class="icon-btn edit" onclick=\'editarExcursao("' + exc.id + '")\' type="button" title="Editar"><i class="fas fa-pen"></i></button>' : '') +
           (sessao.podeExcluir ? '<button class="icon-btn delete" onclick=\'excluirExcursao("' + exc.id + '", "' + exc.titulo.replace(/"/g, '&quot;') + '")\' type="button" title="Excluir"><i class="fas fa-trash"></i></button>' : '') +
         '</td>' +
@@ -404,7 +407,19 @@ async function carregarExcursoesAdmin() {
 }
 
 /* ============================================================
-   COMPRAS - ADMIN (com botão de excluir)
+   NOTIFICAR EXCURSÃO (atalho direto da tabela)
+   ============================================================ */
+function notificarExcursao(excursaoId) {
+  // Abre o painel de notificações
+  if (typeof abrirPainelNotificacoes === 'function') {
+    abrirPainelNotificacoes();
+  } else {
+    alert('Sistema de notificações não carregado. Recarregue a página.');
+  }
+}
+
+/* ============================================================
+   COMPRAS - ADMIN
    ============================================================ */
 async function carregarComprasAdmin() {
   const container = document.getElementById('adminComprasList');
@@ -435,13 +450,17 @@ async function carregarComprasAdmin() {
           )
         );
 
+      const notifBadge = c.notificadoEm
+        ? `<span style="background:#e8fff1;color:#0d7a4a;padding:0.15rem 0.45rem;border-radius:0.8rem;font-size:0.68rem;font-weight:700;margin-left:0.3rem;" title="${new Date(c.notificadoEm).toLocaleString('pt-BR')}">📲 notificado</span>`
+        : '';
+
       const telLimpo = (c.telefone || '').replace(/\D/g, '');
       const msgWhats = encodeURIComponent(
         `Olá ${c.nome}! Aqui está o link do seu cartão de embarque da AHGA Turismo:\n\n${URL_SITE_PUBLICO}/cartao.html?codigo=${c.codigo}\n\nApresente o QR Code no dia da excursão. Boa viagem! 🚌`
       );
 
       linhas += '<tr>' +
-        '<td><strong>' + (c.nome || '—') + '</strong><br><span style="font-size:0.72rem;color:#64748b;">' + (c.telefone || '') + '</span></td>' +
+        '<td><strong>' + (c.nome || '—') + '</strong>' + notifBadge + '<br><span style="font-size:0.72rem;color:#64748b;">' + (c.telefone || '') + '</span></td>' +
         '<td>' + (c.cpf || '—') + '</td>' +
         '<td>' + (c.excursaoTitulo || '—') + '</td>' +
         '<td>' + (c.qtd || 1) + '</td>' +
@@ -473,7 +492,7 @@ async function carregarComprasAdmin() {
 }
 
 /* ============================================================
-   ✅ EXCLUIR COMPRA (com dupla confirmação + devolve vagas)
+   EXCLUIR COMPRA
    ============================================================ */
 async function excluirCompra(codigo, nomePassageiro) {
   const confirmacao1 = confirm(
@@ -789,6 +808,7 @@ window.verDetalhesExcursao = verDetalhesExcursao;
 window.carregarComprasAdmin = carregarComprasAdmin;
 window.copiarLinkCartao = copiarLinkCartao;
 window.excluirCompra = excluirCompra;
+window.notificarExcursao = notificarExcursao;
 window.getSessao = getSessao;
 window.setSessao = setSessao;
 

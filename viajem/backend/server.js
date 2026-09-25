@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import Groq from 'groq-sdk';
+import cron from 'node-cron';
 import authRoutes, { exigirLogin } from './auth.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -1052,6 +1053,32 @@ app.get('/api/compras', async (req, res) => {
   }
 });
 
+/* ✅ CHECK-INS DA EXCURSÃO (para marcar ✅ em tempo real) */
+app.get('/api/compras/excursao/:excursaoId/checkins', async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.json({ checkins: [] });
+
+    const { excursaoId } = req.params;
+
+    const lista = await db.collection('compras')
+      .find({
+        excursaoId: excursaoId,
+        status: 'utilizado'
+      })
+      .project({ codigo: 1, nome: 1, utilizadoEm: 1, qtd: 1, _id: 0 })
+      .toArray();
+
+    res.json({
+      checkins: lista,
+      total: lista.length,
+      totalPessoas: lista.reduce((s, c) => s + (Number(c.qtd) || 1), 0)
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* POST público — registrar nova compra (DECREMENTA VAGAS) */
 app.post('/api/compras', async (req, res) => {
   try {
@@ -1063,11 +1090,9 @@ app.post('/api/compras', async (req, res) => {
       return res.status(400).json({ error: 'Dados incompletos' });
     }
 
-    // ✅ Evita duplicata pelo código
     const existe = await db.collection('compras').findOne({ codigo });
     if (existe) return res.status(409).json({ error: 'Código já existe' });
 
-    // ✅ Busca a excursão
     const excursao = await db.collection('excursoes').findOne({ id: excursaoId });
     if (!excursao) {
       return res.status(404).json({ error: 'Excursão não encontrada' });
@@ -1077,7 +1102,6 @@ app.post('/api/compras', async (req, res) => {
     const vagasAtuais = Number(excursao.vagas) || 0;
     const temControleVagas = vagasAtuais > 0;
 
-    // ✅ Verifica se ainda tem vagas suficientes
     if (temControleVagas && qtdNum > vagasAtuais) {
       return res.status(400).json({
         error: `Vagas insuficientes. Restam apenas ${vagasAtuais} vaga(s).`
@@ -1092,10 +1116,8 @@ app.post('/api/compras', async (req, res) => {
       criadoEm: new Date().toISOString()
     };
 
-    // ✅ Insere a compra
     await db.collection('compras').insertOne(nova);
 
-    // ✅ Decrementa as vagas
     if (temControleVagas) {
       await db.collection('excursoes').updateOne(
         { id: excursaoId },
@@ -1161,7 +1183,6 @@ app.post('/api/compras/:codigo/validar', async (req, res) => {
    APROVAR / CANCELAR / EXCLUIR COMPRA (ADMIN)
    ============================================================ */
 
-/* PUT — Aprovar compra */
 app.put('/api/compras/:codigo/aprovar', exigirAdminHeader, async (req, res) => {
   try {
     const db = getDB();
@@ -1183,7 +1204,6 @@ app.put('/api/compras/:codigo/aprovar', exigirAdminHeader, async (req, res) => {
   }
 });
 
-/* PUT — Cancelar compra (DEVOLVE VAGAS) */
 app.put('/api/compras/:codigo/cancelar', exigirAdminHeader, async (req, res) => {
   try {
     const db = getDB();
@@ -1203,7 +1223,6 @@ app.put('/api/compras/:codigo/cancelar', exigirAdminHeader, async (req, res) => 
       { $set: { status: 'cancelado', canceladoEm: new Date().toISOString() } }
     );
 
-    // ✅ Devolve as vagas (se a excursão tem controle)
     const excursao = await db.collection('excursoes').findOne({ id: compra.excursaoId });
     if (excursao) {
       const qtd = Number(compra.qtd) || 1;
@@ -1220,7 +1239,6 @@ app.put('/api/compras/:codigo/cancelar', exigirAdminHeader, async (req, res) => 
   }
 });
 
-/* DELETE — Excluir compra (DEVOLVE VAGAS) */
 app.delete('/api/compras/:codigo', exigirAdminHeader, async (req, res) => {
   try {
     const db = getDB();
@@ -1233,7 +1251,6 @@ app.delete('/api/compras/:codigo', exigirAdminHeader, async (req, res) => {
 
     await db.collection('compras').deleteOne({ codigo: req.params.codigo });
 
-    // ✅ Devolve as vagas (se a excursão tem controle)
     const excursao = await db.collection('excursoes').findOne({ id: compra.excursaoId });
     if (excursao) {
       const qtd = Number(compra.qtd) || 1;
@@ -1251,6 +1268,201 @@ app.delete('/api/compras/:codigo', exigirAdminHeader, async (req, res) => {
 });
 
 /* ============================================================
+   NOTIFICAÇÕES — WhatsApp (1 dia antes da excursão)
+   ============================================================ */
+
+/* Helpers de data (fuso Brasil UTC-3) */
+function getHojeBR() {
+  const agora = new Date();
+  const br = new Date(agora.getTime() - 3 * 60 * 60 * 1000);
+  return br.toISOString().split('T')[0];
+}
+
+function getAmanhaBR() {
+  const agora = new Date();
+  const br = new Date(agora.getTime() - 3 * 60 * 60 * 1000);
+  br.setDate(br.getDate() + 1);
+  return br.toISOString().split('T')[0];
+}
+
+/* GET — Excursões que precisam de notificação */
+app.get('/api/notificacoes/pendentes', async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.json({ amanha: [], hoje: [], atrasadas: [] });
+
+    const hoje = getHojeBR();
+    const amanha = getAmanhaBR();
+
+    const excursoes = await db.collection('excursoes').find({}).toArray();
+
+    const excAmanha = excursoes.filter(e => e.dataIda === amanha);
+    const excHoje = excursoes.filter(e => e.dataIda === hoje);
+    const excAtrasadas = excursoes.filter(e => e.dataIda && e.dataIda < hoje);
+
+    async function enriquecer(lista) {
+      const resultado = [];
+      for (const exc of lista) {
+        const passageiros = await db.collection('compras')
+          .find({ excursaoId: exc.id, status: { $ne: 'cancelado' } })
+          .sort({ nome: 1 })
+          .toArray();
+
+        resultado.push({
+          id: exc.id,
+          titulo: exc.titulo,
+          destino: exc.destino,
+          dataIda: exc.dataIda,
+          dataVolta: exc.dataVolta || '',
+          categoria: exc.categoria || 'Geral',
+          passageiros: passageiros.map(p => ({
+            codigo: p.codigo,
+            nome: p.nome,
+            telefone: p.telefone,
+            rg: p.rg,
+            cpf: p.cpf,
+            qtd: p.qtd || 1,
+            total: p.total || 0,
+            status: p.status,
+            notificadoEm: p.notificadoEm || null,
+            vendedorNome: p.vendedorNome || '—'
+          }))
+        });
+      }
+      return resultado;
+    }
+
+    const [amanhaEnriquecida, hojeEnriquecida, atrasadasEnriquecidas] = await Promise.all([
+      enriquecer(excAmanha),
+      enriquecer(excHoje),
+      enriquecer(excAtrasadas)
+    ]);
+
+    res.json({
+      amanha: amanhaEnriquecida,
+      hoje: hojeEnriquecida,
+      atrasadas: atrasadasEnriquecidas,
+      dataHoje: hoje,
+      dataAmanha: amanha
+    });
+
+  } catch (err) {
+    console.error('Erro notificações:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* POST — Marcar passageiro como notificado */
+app.post('/api/notificacoes/marcar', async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.status(500).json({ error: 'Banco não conectado' });
+
+    const { codigo, canal = 'whatsapp' } = req.body;
+
+    if (!codigo) {
+      return res.status(400).json({ error: 'Código não informado' });
+    }
+
+    await db.collection('compras').updateOne(
+      { codigo },
+      {
+        $set: {
+          notificadoEm: new Date().toISOString(),
+          notificadoCanal: canal
+        }
+      }
+    );
+
+    res.json({ ok: true });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* GET — Histórico de notificações enviadas */
+app.get('/api/notificacoes/historico', async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.json({ notificados: [] });
+
+    const lista = await db.collection('compras')
+      .find({ notificadoEm: { $exists: true } })
+      .sort({ notificadoEm: -1 })
+      .limit(100)
+      .toArray();
+
+    res.json({ notificados: lista });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ============================================================
+   ⏰ CRON JOB — Verifica diariamente às 08:00 (BRT)
+   ============================================================ */
+function iniciarCronNotificacoes() {
+  cron.schedule('0 11 * * *', async () => {
+    console.log('⏰ [CRON] Verificando excursões para amanhã...');
+
+    try {
+      const db = getDB();
+      if (!db) {
+        console.warn('⚠️ [CRON] MongoDB não conectado. Pulando.');
+        return;
+      }
+
+      const amanha = getAmanhaBR();
+      const excursoesAmanha = await db.collection('excursoes').find({ dataIda: amanha }).toArray();
+
+      if (excursoesAmanha.length === 0) {
+        console.log('✅ [CRON] Nenhuma excursão para amanhã.');
+        return;
+      }
+
+      let totalNotificados = 0;
+
+      for (const exc of excursoesAmanha) {
+        const passageiros = await db.collection('compras').find({
+          excursaoId: exc.id,
+          status: { $ne: 'cancelado' },
+          notificadoEm: { $exists: false }
+        }).toArray();
+
+        for (const p of passageiros) {
+          const telLimpo = (p.telefone || '').replace(/\D/g, '');
+          if (!telLimpo) continue;
+
+          await db.collection('compras').updateOne(
+            { codigo: p.codigo },
+            {
+              $set: {
+                notificadoEm: new Date().toISOString(),
+                notificadoCanal: 'cron-automatico'
+              }
+            }
+          );
+
+          totalNotificados++;
+          console.log(`   📲 [CRON] ${p.nome} (${telLimpo}) — ${exc.titulo}`);
+        }
+      }
+
+      console.log(`✅ [CRON] ${totalNotificados} notificação(ões) processada(s).`);
+
+    } catch (err) {
+      console.error('❌ [CRON] Erro:', err.message);
+    }
+  }, {
+    timezone: 'America/Sao_Paulo'
+  });
+
+  console.log('⏰ Cron de notificações agendado para 08:00 (horário de Brasília)');
+}
+
+/* ============================================================
    CONECTA AO MONGODB E SOBE O SERVIDOR
    ============================================================ */
 await conectarDB();
@@ -1262,4 +1474,6 @@ app.listen(PORT, () => {
   console.log(`🌍 Países: ${getPaisesDisponiveis().length}`);
   console.log(`🔐 Google OAuth: ${process.env.GOOGLE_CLIENT_ID ? '✅ Configurado' : '❌ Não configurado'}`);
   console.log(`💾 MongoDB: ${getDB() ? '✅ Conectado' : '❌ Desconectado'}`);
+
+  iniciarCronNotificacoes();
 });
