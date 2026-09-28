@@ -549,7 +549,8 @@ app.get('/api/status', (req, res) => {
     paises: getPaisesDisponiveis().length,
     imagensCache: imageCache.size,
     mongoDB: getDB() ? '✅ Conectado' : '❌ Desconectado',
-    googleOAuth: process.env.GOOGLE_CLIENT_ID ? '✅ Configurado' : '❌ Não configurado'
+    googleOAuth: process.env.GOOGLE_CLIENT_ID ? '✅ Configurado' : '❌ Não configurado',
+    ticketmaster: process.env.TICKETMASTER_API_KEY ? '✅ Configurado' : '❌ Não configurado (eventos fallback ativo)'
   });
 });
 
@@ -1031,29 +1032,22 @@ app.delete('/api/excursoes/:id', exigirAdminHeader, async (req, res) => {
    COMPRAS — MongoDB Atlas
    ============================================================ */
 
-/* GET público — listar compras (com filtro opcional por CPF) */
-app.get('/api/compras', async (req, res) => {
+/* ⚠️ IMPORTANTE: ROTAS ESPECÍFICAS ANTES DA ROTA COM PARÂMETRO :codigo */
+
+/* Contar compras pendentes (para badge no menu) */
+app.get('/api/compras/pendentes/contador', exigirAdminHeader, async (req, res) => {
   try {
     const db = getDB();
-    if (!db) return res.json({ compras: [] });
+    if (!db) return res.json({ total: 0 });
 
-    const filtro = {};
-    if (req.query.cpf) {
-      filtro.cpf = req.query.cpf;
-    }
-
-    const lista = await db.collection('compras')
-      .find(filtro)
-      .sort({ criadoEm: -1 })
-      .toArray();
-
-    res.json({ compras: lista });
+    const total = await db.collection('compras').countDocuments({ status: 'pendente' });
+    res.json({ total });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-/* ✅ CHECK-INS DA EXCURSÃO (para marcar ✅ em tempo real) */
+/* Check-ins da excursão */
 app.get('/api/compras/excursao/:excursaoId/checkins', async (req, res) => {
   try {
     const db = getDB();
@@ -1074,6 +1068,64 @@ app.get('/api/compras/excursao/:excursaoId/checkins', async (req, res) => {
       total: lista.length,
       totalPessoas: lista.reduce((s, c) => s + (Number(c.qtd) || 1), 0)
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* Histórico de ações */
+app.get('/api/compras/historico-acoes', exigirAdminHeader, async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.json({ acoes: [] });
+
+    const acoes = await db.collection('compras')
+      .find({
+        status: { $in: ['aprovado', 'recusado', 'cancelado', 'utilizado'] }
+      })
+      .sort({
+        aprovadoEm: -1,
+        recusadoEm: -1,
+        canceladoEm: -1,
+        utilizadoEm: -1
+      })
+      .limit(50)
+      .toArray();
+
+    const formatadas = acoes.map(c => ({
+      codigo: c.codigo,
+      nome: c.nome,
+      excursaoTitulo: c.excursaoTitulo,
+      total: c.total,
+      status: c.status,
+      motivo: c.motivoRecusa || '',
+      data: c.aprovadoEm || c.recusadoEm || c.canceladoEm || c.utilizadoEm
+    }));
+
+    res.json({ acoes: formatadas });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* GET público — listar compras (com filtro opcional por CPF) */
+app.get('/api/compras', async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.json({ compras: [] });
+
+    const filtro = {};
+    if (req.query.cpf) {
+      filtro.cpf = req.query.cpf;
+    }
+
+    const lista = await db.collection('compras')
+      .find(filtro)
+      .sort({ criadoEm: -1 })
+      .toArray();
+
+    res.json({ compras: lista });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1135,7 +1187,7 @@ app.post('/api/compras', async (req, res) => {
   }
 });
 
-/* GET público — buscar compra por código (para o cartão) */
+/* GET público — buscar compra por código */
 app.get('/api/compras/:codigo', async (req, res) => {
   try {
     const db = getDB();
@@ -1149,7 +1201,7 @@ app.get('/api/compras/:codigo', async (req, res) => {
   }
 });
 
-/* POST público — validar embarque (marcar como utilizado) */
+/* POST público — validar embarque */
 app.post('/api/compras/:codigo/validar', async (req, res) => {
   try {
     const db = getDB();
@@ -1162,8 +1214,8 @@ app.post('/api/compras/:codigo/validar', async (req, res) => {
       return res.status(400).json({ error: 'Já utilizado', utilizadoEm: compra.utilizadoEm });
     }
 
-    if (compra.status === 'cancelado') {
-      return res.status(400).json({ error: 'Compra cancelada' });
+    if (compra.status === 'cancelado' || compra.status === 'recusado') {
+      return res.status(400).json({ error: 'Compra ' + compra.status });
     }
 
     await db.collection('compras').updateOne(
@@ -1180,30 +1232,104 @@ app.post('/api/compras/:codigo/validar', async (req, res) => {
 });
 
 /* ============================================================
-   APROVAR / CANCELAR / EXCLUIR COMPRA (ADMIN)
+   ✅ APROVAR / RECUSAR / CANCELAR / EXCLUIR COMPRA (ADMIN)
    ============================================================ */
 
+/* APROVAR */
 app.put('/api/compras/:codigo/aprovar', exigirAdminHeader, async (req, res) => {
   try {
     const db = getDB();
     if (!db) return res.status(500).json({ error: 'Banco não conectado' });
 
-    const result = await db.collection('compras').updateOne(
-      { codigo: req.params.codigo },
-      { $set: { status: 'aprovado', aprovadoEm: new Date().toISOString() } }
-    );
+    const compra = await db.collection('compras').findOne({ codigo: req.params.codigo });
+    if (!compra) return res.status(404).json({ error: 'Compra não encontrada' });
 
-    if (result.matchedCount === 0) {
-      return res.status(404).json({ error: 'Compra não encontrada' });
+    if (compra.status === 'aprovado') {
+      return res.status(400).json({ error: 'Compra já está aprovada' });
     }
 
+    if (compra.status === 'recusado' || compra.status === 'cancelado') {
+      return res.status(400).json({ error: 'Não é possível aprovar uma compra ' + compra.status });
+    }
+
+    await db.collection('compras').updateOne(
+      { codigo: req.params.codigo },
+      {
+        $set: {
+          status: 'aprovado',
+          aprovadoEm: new Date().toISOString()
+        }
+      }
+    );
+
     console.log(`✅ Compra aprovada: ${req.params.codigo}`);
-    res.json({ ok: true });
+    res.json({ ok: true, mensagem: 'Compra aprovada' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+/* RECUSAR (com motivo) — devolve vagas */
+app.put('/api/compras/:codigo/recusar', exigirAdminHeader, async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.status(500).json({ error: 'Banco não conectado' });
+
+    const { motivo } = req.body;
+    const codigo = req.params.codigo;
+
+    const compra = await db.collection('compras').findOne({ codigo });
+    if (!compra) {
+      return res.status(404).json({ error: 'Compra não encontrada' });
+    }
+
+    if (compra.status === 'recusado') {
+      return res.status(400).json({ error: 'Compra já está recusada' });
+    }
+
+    if (compra.status === 'utilizado') {
+      return res.status(400).json({ error: 'Compra já foi utilizada' });
+    }
+
+    // Atualiza status
+    await db.collection('compras').updateOne(
+      { codigo },
+      {
+        $set: {
+          status: 'recusado',
+          motivoRecusa: motivo || 'Não informado',
+          recusadoEm: new Date().toISOString()
+        }
+      }
+    );
+
+    // Devolve vagas para a excursão
+    const excursao = await db.collection('excursoes').findOne({ id: compra.excursaoId });
+    if (excursao) {
+      const qtd = Number(compra.qtd) || 1;
+      await db.collection('excursoes').updateOne(
+        { id: compra.excursaoId },
+        { $inc: { vagas: qtd } }
+      );
+      console.log(`❌ Compra ${codigo} recusada. ${qtd} vaga(s) devolvida(s).`);
+    }
+
+    console.log(`💳 Compra ${codigo} recusada. Motivo: ${motivo || 'não informado'}`);
+
+    res.json({
+      ok: true,
+      mensagem: 'Compra recusada com sucesso',
+      codigo,
+      motivo: motivo || 'Não informado'
+    });
+
+  } catch (err) {
+    console.error('Erro ao recusar:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* CANCELAR (compatibilidade) — devolve vagas */
 app.put('/api/compras/:codigo/cancelar', exigirAdminHeader, async (req, res) => {
   try {
     const db = getDB();
@@ -1239,6 +1365,7 @@ app.put('/api/compras/:codigo/cancelar', exigirAdminHeader, async (req, res) => 
   }
 });
 
+/* EXCLUIR (devolve vagas) */
 app.delete('/api/compras/:codigo', exigirAdminHeader, async (req, res) => {
   try {
     const db = getDB();
@@ -1270,8 +1397,6 @@ app.delete('/api/compras/:codigo', exigirAdminHeader, async (req, res) => {
 /* ============================================================
    NOTIFICAÇÕES — WhatsApp (1 dia antes da excursão)
    ============================================================ */
-
-/* Helpers de data (fuso Brasil UTC-3) */
 function getHojeBR() {
   const agora = new Date();
   const br = new Date(agora.getTime() - 3 * 60 * 60 * 1000);
@@ -1285,7 +1410,6 @@ function getAmanhaBR() {
   return br.toISOString().split('T')[0];
 }
 
-/* GET — Excursões que precisam de notificação */
 app.get('/api/notificacoes/pendentes', async (req, res) => {
   try {
     const db = getDB();
@@ -1352,7 +1476,6 @@ app.get('/api/notificacoes/pendentes', async (req, res) => {
   }
 });
 
-/* POST — Marcar passageiro como notificado */
 app.post('/api/notificacoes/marcar', async (req, res) => {
   try {
     const db = getDB();
@@ -1381,7 +1504,6 @@ app.post('/api/notificacoes/marcar', async (req, res) => {
   }
 });
 
-/* GET — Histórico de notificações enviadas */
 app.get('/api/notificacoes/historico', async (req, res) => {
   try {
     const db = getDB();
@@ -1399,6 +1521,308 @@ app.get('/api/notificacoes/historico', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+/* ============================================================
+   🌤️ CLIMA — Open-Meteo (gratuito, sem API key)
+   ============================================================ */
+
+const geoCache = new Map();
+
+async function geocodificarCidade(nomeCidade) {
+  const key = nomeCidade.toLowerCase().trim();
+  if (geoCache.has(key)) return geoCache.get(key);
+
+  try {
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(nomeCidade)}&count=1&language=pt&format=json`;
+    const r = await fetch(url);
+    const data = await r.json();
+
+    if (data.results && data.results.length > 0) {
+      const local = data.results[0];
+      const resultado = {
+        nome: local.name,
+        pais: local.country,
+        estado: local.admin1 || '',
+        lat: local.latitude,
+        lon: local.longitude,
+        timezone: local.timezone || 'America/Sao_Paulo'
+      };
+      geoCache.set(key, resultado);
+      return resultado;
+    }
+
+    return null;
+  } catch (err) {
+    console.error('Erro geocodificação:', err.message);
+    return null;
+  }
+}
+
+function getDescricaoClimaPT(codigo) {
+  const mapa = {
+    0: 'Céu limpo', 1: 'Principalmente limpo', 2: 'Parcialmente nublado', 3: 'Nublado',
+    45: 'Névoa', 48: 'Névoa com geada',
+    51: 'Garoa leve', 53: 'Garoa moderada', 55: 'Garoa densa',
+    56: 'Garoa congelante leve', 57: 'Garoa congelante densa',
+    61: 'Chuva leve', 63: 'Chuva moderada', 65: 'Chuva forte',
+    66: 'Chuva congelante leve', 67: 'Chuva congelante forte',
+    71: 'Neve leve', 73: 'Neve moderada', 75: 'Neve forte', 77: 'Grãos de neve',
+    80: 'Pancadas de chuva leves', 81: 'Pancadas de chuva moderadas', 82: 'Pancadas de chuva violentas',
+    85: 'Pancadas de neve leves', 86: 'Pancadas de neve fortes',
+    95: 'Trovoada', 96: 'Trovoada com granizo leve', 99: 'Trovoada com granizo forte'
+  };
+  return mapa[codigo] || 'Tempo variável';
+}
+
+app.get('/api/clima', async (req, res) => {
+  try {
+    const cidade = req.query.cidade;
+    const dataIda = req.query.data;
+
+    if (!cidade) {
+      return res.status(400).json({ error: 'Cidade não informada' });
+    }
+
+    const geo = await geocodificarCidade(cidade);
+
+    if (!geo) {
+      return res.status(404).json({ error: 'Cidade não encontrada' });
+    }
+
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${geo.lat}&longitude=${geo.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=${encodeURIComponent(geo.timezone)}&forecast_days=14`;
+
+    const r = await fetch(url);
+    const data = await r.json();
+
+    if (!data.current || !data.daily) {
+      return res.status(500).json({ error: 'Dados de clima indisponíveis' });
+    }
+
+    const atual = {
+      temperatura: data.current.temperature_2m,
+      sensacao: data.current.apparent_temperature,
+      umidade: data.current.relative_humidity_2m,
+      vento: data.current.wind_speed_10m,
+      codigo: data.current.weather_code,
+      descricao: getDescricaoClimaPT(data.current.weather_code),
+      max: data.daily.temperature_2m_max[0],
+      min: data.daily.temperature_2m_min[0]
+    };
+
+    const previsao = data.daily.time.map((dataStr, i) => ({
+      data: dataStr,
+      max: data.daily.temperature_2m_max[i],
+      min: data.daily.temperature_2m_min[i],
+      codigo: data.daily.weather_code[i],
+      descricao: getDescricaoClimaPT(data.daily.weather_code[i]),
+      chuva: data.daily.precipitation_probability_max[i] || 0
+    }));
+
+    res.json({
+      cidade: geo.nome,
+      estado: geo.estado,
+      pais: geo.pais,
+      atual,
+      previsao
+    });
+
+  } catch (err) {
+    console.error('Erro /api/clima:', err);
+    res.status(500).json({ error: 'Erro ao buscar clima', details: err.message });
+  }
+});
+
+/* ============================================================
+   🎉 EVENTOS — Ticketmaster Discovery API (gratuita)
+   ============================================================ */
+
+const eventosCache = new Map();
+
+app.get('/api/eventos', async (req, res) => {
+  try {
+    const cidade = req.query.cidade;
+    const dataInicio = req.query.dataInicio;
+    const dataFim = req.query.dataFim;
+
+    if (!cidade) {
+      return res.status(400).json({ error: 'Cidade não informada' });
+    }
+
+    const key = `${cidade.toLowerCase()}_${dataInicio || ''}_${dataFim || ''}`;
+    const cached = eventosCache.get(key);
+    if (cached && (Date.now() - cached.timestamp) < 30 * 60 * 1000) {
+      return res.json({ eventos: cached.data });
+    }
+
+    const TM_API_KEY = process.env.TICKETMASTER_API_KEY;
+
+    // Se não tiver API key, usa fallback
+    if (!TM_API_KEY) {
+      const eventos = gerarEventosFallback(cidade, dataInicio);
+      eventosCache.set(key, { data: eventos, timestamp: Date.now() });
+      return res.json({ eventos, fallback: true });
+    }
+
+    const params = new URLSearchParams({
+      apikey: TM_API_KEY,
+      city: cidade,
+      size: '10',
+      sort: 'date,asc',
+      locale: '*'
+    });
+
+    if (dataInicio) {
+      params.append('startDateTime', `${dataInicio}T00:00:00Z`);
+    } else {
+      params.append('startDateTime', new Date().toISOString().split('.')[0] + 'Z');
+    }
+
+    if (dataFim) {
+      params.append('endDateTime', `${dataFim}T23:59:59Z`);
+    }
+
+    const url = `https://app.ticketmaster.com/discovery/v2/events.json?${params.toString()}`;
+    const r = await fetch(url);
+    const data = await r.json();
+
+    const eventosBrutos = data._embedded?.events || [];
+
+    const eventos = eventosBrutos.map(ev => {
+      const classificacao = ev.classifications?.[0];
+      const segmento = (classificacao?.segment?.name || '').toLowerCase();
+      const genero = (classificacao?.genre?.name || '').toLowerCase();
+
+      let tipo = 'outro';
+      if (genero.includes('rock') || genero.includes('pop') || genero.includes('music') || segmento.includes('music')) tipo = 'show';
+      else if (genero.includes('festival')) tipo = 'festival';
+      else if (genero.includes('theatre') || genero.includes('art')) tipo = 'teatro';
+      else if (segmento.includes('sports')) tipo = 'esporte';
+      else if (genero.includes('food') || genero.includes('culinary')) tipo = 'gastronomico';
+      else if (segmento.includes('arts')) tipo = 'cultural';
+
+      const dataEvento = ev.dates?.start?.localDate || '';
+      const dataFimEvento = ev.dates?.end?.localDate || dataEvento;
+
+      const local = ev._embedded?.venues?.[0];
+      const nomeLocal = local?.name || '';
+      const cidadeLocal = local?.city?.name || '';
+
+      return {
+        nome: ev.name,
+        tipo,
+        dataInicio: dataEvento,
+        dataFim: dataFimEvento,
+        local: nomeLocal ? `${nomeLocal}, ${cidadeLocal}` : cidadeLocal,
+        descricao: ev.info || ev.pleaseNote || '',
+        link: ev.url || '',
+        imagem: ev.images?.[0]?.url || ''
+      };
+    });
+
+    // Se não achou eventos reais, usa fallback
+    if (eventos.length === 0) {
+      const fallback = gerarEventosFallback(cidade, dataInicio);
+      eventosCache.set(key, { data: fallback, timestamp: Date.now() });
+      return res.json({ eventos: fallback, fallback: true });
+    }
+
+    eventosCache.set(key, { data: eventos, timestamp: Date.now() });
+
+    res.json({ eventos });
+
+  } catch (err) {
+    console.error('Erro /api/eventos:', err);
+    const cidade = req.query.cidade;
+    const dataInicio = req.query.dataInicio;
+    const eventos = gerarEventosFallback(cidade, dataInicio);
+    res.json({ eventos, fallback: true, erro: err.message });
+  }
+});
+
+/* ============================================================
+   🎭 EVENTOS FALLBACK — Feriados + datas sazonais
+   ============================================================ */
+function gerarEventosFallback(cidade, dataInicio) {
+  const eventos = [];
+  const dataBase = dataInicio ? new Date(dataInicio + 'T00:00:00') : new Date();
+  const mes = dataBase.getMonth() + 1;
+  const dia = dataBase.getDate();
+  const ano = dataBase.getFullYear();
+
+  const feriados = {
+    '1-1': 'Confraternização Universal',
+    '4-21': 'Tiradentes',
+    '5-1': 'Dia do Trabalho',
+    '9-7': 'Independência do Brasil',
+    '10-12': 'Nossa Senhora Aparecida',
+    '11-2': 'Finados',
+    '11-15': 'Proclamação da República',
+    '12-25': 'Natal'
+  };
+
+  const chave = `${mes}-${dia}`;
+  if (feriados[chave]) {
+    eventos.push({
+      nome: feriados[chave],
+      tipo: 'religioso',
+      dataInicio: dataBase.toISOString().split('T')[0],
+      dataFim: dataBase.toISOString().split('T')[0],
+      local: cidade,
+      descricao: 'Feriado nacional — verifique horários de funcionamento dos pontos turísticos.',
+      link: ''
+    });
+  }
+
+  if (mes === 6 || mes === 7) {
+    eventos.push({
+      nome: 'Festas Juninas',
+      tipo: 'festival',
+      dataInicio: `${ano}-06-01`,
+      dataFim: `${ano}-06-30`,
+      local: cidade,
+      descricao: 'Tradicionais festas juninas com comidas típicas, forró e quadrilha.',
+      link: ''
+    });
+  }
+
+  if (mes === 2 || mes === 3) {
+    eventos.push({
+      nome: 'Carnaval',
+      tipo: 'festival',
+      dataInicio: `${ano}-02-01`,
+      dataFim: `${ano}-03-10`,
+      local: cidade,
+      descricao: 'Folia de carnaval com blocos de rua, desfiles e festas por toda a cidade.',
+      link: ''
+    });
+  }
+
+  if (mes === 12) {
+    eventos.push({
+      nome: 'Programação de Natal',
+      tipo: 'cultural',
+      dataInicio: `${ano}-12-01`,
+      dataFim: `${ano}-12-25`,
+      local: cidade,
+      descricao: 'Decoração natalina, apresentações e eventos especiais de fim de ano.',
+      link: ''
+    });
+  }
+
+  if (mes === 1) {
+    eventos.push({
+      nome: 'Temporada de Verão',
+      tipo: 'cultural',
+      dataInicio: `${ano}-01-01`,
+      dataFim: `${ano}-01-31`,
+      local: cidade,
+      descricao: 'Alta temporada com eventos culturais, shows e atividades ao ar livre.',
+      link: ''
+    });
+  }
+
+  return eventos;
+}
 
 /* ============================================================
    ⏰ CRON JOB — Verifica diariamente às 08:00 (BRT)
@@ -1474,6 +1898,7 @@ app.listen(PORT, () => {
   console.log(`🌍 Países: ${getPaisesDisponiveis().length}`);
   console.log(`🔐 Google OAuth: ${process.env.GOOGLE_CLIENT_ID ? '✅ Configurado' : '❌ Não configurado'}`);
   console.log(`💾 MongoDB: ${getDB() ? '✅ Conectado' : '❌ Desconectado'}`);
+  console.log(`🎉 Ticketmaster: ${process.env.TICKETMASTER_API_KEY ? '✅ Configurado' : '❌ Não configurado (fallback ativo)'}`);
 
   iniciarCronNotificacoes();
 });
