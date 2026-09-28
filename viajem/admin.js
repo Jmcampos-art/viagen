@@ -327,7 +327,7 @@
          '<div class="modal-hero-img" style="background-image: url(\'' + img + '\');"></div>' +
          '<h3><i class="fas fa-suitcase-rolling"></i> ' + exc.titulo + '</h3>' +
          '<p class="modal-sub">' + exc.destino + ' · ' + formatarData(exc.dataIda) + (exc.dataVolta ? ' – ' + formatarData(exc.dataVolta) : '') + '</p>' +
-         (exc.descricao ? '<div class="modal-section"><h4><i class="fas fa-align-left"></i> Descrição</h4><p style="font-size:0.9rem;color:#6b7d98;line-height:1.6;">' + exc.descricao + '</p></div>' : '') +
+         (exc.descricao ? '<div class="modal-section"><h4><i class="fas fa-align-left"></i> Descrição</h4><p style="font-size:0.9rem;color:#6b7d98;line-height:1.7;white-space:pre-wrap;word-wrap:break-word;">' + exc.descricao + '</p></div>' : '') +
          (inclui ? '<div class="modal-section"><h4><i class="fas fa-check-circle"></i> O que está incluso</h4><ul class="included-list">' + inclui + '</ul></div>' : '') +
          (roteiro ? '<div class="modal-section"><h4><i class="fas fa-route"></i> Roteiro</h4><ul class="included-list">' + roteiro + '</ul></div>' : '') +
    
