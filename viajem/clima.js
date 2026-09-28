@@ -8,7 +8,23 @@
    const cacheClima = new Map();
    const CACHE_TTL = 30 * 60 * 1000;
    
-   /* ---------- BUSCAR CLIMA ---------- */
+   /* ============================================================
+      EXTRAI NOME DA CIDADE (remove estado, traço, vírgula, etc)
+      ============================================================ */
+   function extrairNomeCidade(destino) {
+     if (!destino) return '';
+     
+     return destino
+       .split(',')[0]        // Remove "São Paulo, SP" → "São Paulo"
+       .split(' - ')[0]      // Remove "Guarujá - SP" → "Guarujá"
+       .split('-')[0]        // Remove "Guarujá-SP" → "Guarujá"
+       .split('/')[0]        // Remove "Guarujá/SP" → "Guarujá"
+       .trim();
+   }
+   
+   /* ============================================================
+      BUSCAR CLIMA
+      ============================================================ */
    async function buscarClimaCidade(cidade, dataIda = null) {
      if (!cidade) return null;
    
@@ -39,7 +55,9 @@
      }
    }
    
-   /* ---------- BUSCAR EVENTOS ---------- */
+   /* ============================================================
+      BUSCAR EVENTOS
+      ============================================================ */
    async function buscarEventosCidade(cidade, dataInicio = null, dataFim = null) {
      if (!cidade) return [];
    
@@ -72,7 +90,9 @@
      }
    }
    
-   /* ---------- ÍCONES E CORES ---------- */
+   /* ============================================================
+      ÍCONES E CORES
+      ============================================================ */
    function getIconeClima(codigo, descricao = '') {
      const desc = descricao.toLowerCase();
      if (desc.includes('trovoada') || desc.includes('tempestade')) return 'fa-cloud-bolt';
@@ -129,7 +149,9 @@
      return mapa[tipo] || 'fa-calendar-check';
    }
    
-   /* ---------- RENDERIZAR CLIMA ---------- */
+   /* ============================================================
+      RENDERIZAR CLIMA
+      ============================================================ */
    function renderPrevisaoClima(clima) {
      if (!clima || !clima.previsao || clima.previsao.length === 0) {
        return `
@@ -203,7 +225,9 @@
      return html;
    }
    
-   /* ---------- RENDERIZAR EVENTOS ---------- */
+   /* ============================================================
+      RENDERIZAR EVENTOS
+      ============================================================ */
    function renderEventos(eventos, cidade) {
      if (!eventos || eventos.length === 0) {
        return `
@@ -254,7 +278,9 @@
      return html;
    }
    
-   /* ---------- HELPERS DE DATA ---------- */
+   /* ============================================================
+      HELPERS DE DATA
+      ============================================================ */
    function formatarDiaSemanaClima(dataISO) {
      if (!dataISO) return '—';
      const d = new Date(dataISO + 'T00:00:00');
@@ -286,11 +312,23 @@
      return texto;
    }
    
-   /* ---------- CARREGAR TUDO ---------- */
+   /* ============================================================
+      CARREGAR TUDO (com extração correta da cidade)
+      ============================================================ */
    async function carregarClimaEEventos(excursao) {
      if (!excursao || !excursao.destino) return;
    
-     const cidade = excursao.destino.split(',')[0].trim();
+     // ✅ EXTRAÇÃO CORRETA
+     const cidadeBruta = excursao.destino || '';
+     const cidade = extrairNomeCidade(cidadeBruta);
+   
+     console.log(`🔍 Destino original: "${cidadeBruta}" → Cidade extraída: "${cidade}"`);
+   
+     if (!cidade) {
+       console.warn('⚠️ Não foi possível extrair o nome da cidade');
+       return;
+     }
+   
      const dataIda = excursao.dataIda;
      const dataVolta = excursao.dataVolta || dataIda;
    
@@ -329,11 +367,14 @@
      }
    }
    
-   /* ---------- EXPÕE ---------- */
+   /* ============================================================
+      EXPÕE
+      ============================================================ */
    window.buscarClimaCidade = buscarClimaCidade;
    window.buscarEventosCidade = buscarEventosCidade;
    window.renderPrevisaoClima = renderPrevisaoClima;
    window.renderEventos = renderEventos;
    window.carregarClimaEEventos = carregarClimaEEventos;
+   window.extrairNomeCidade = extrairNomeCidade;
    
-   console.log('✅ clima.js (frontend) carregado');
+   console.log('✅ clima.js (frontend) carregado - v2 com extração correta de cidade');
