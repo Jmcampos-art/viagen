@@ -35,11 +35,16 @@
     }
     .solicitar-cartao-box {
       text-align: center;
-      margin: 2.5rem auto 1rem;
-      max-width: 500px;
+      margin: 0;
+      max-width: none;
       background: linear-gradient(135deg, #fff0f5, #fff8e1);
       border-radius: 1.5rem;
       padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      height: 100%;
+      border: 1.5px solid rgba(233, 30, 99, 0.15);
     }
     .solicitar-cartao-box h3 {
       color: var(--text);
@@ -51,6 +56,161 @@
       color: var(--text-muted);
       font-size: 0.88rem;
       margin-bottom: 1rem;
+    }
+    .solicitar-cartao-box button {
+      margin-top: auto;
+      align-self: center;
+    }
+
+    /* GRID DAS DUAS CAIXAS */
+    .duas-caixas-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin: 2.5rem auto 1rem;
+      max-width: 1000px;
+      align-items: stretch;
+    }
+
+    /* CAIXA VERDE WHATSAPP */
+    .notif-lead-box {
+      text-align: center;
+      background: linear-gradient(135deg, #e8fff1, #d4f5e5);
+      border-radius: 1.5rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border: 1.5px solid rgba(37, 211, 102, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    .notif-lead-box::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 160px; height: 160px;
+      background: radial-gradient(circle, rgba(37, 211, 102, 0.15), transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .notif-lead-box h3 {
+      color: #0d7a4a;
+      font-size: 1.1rem;
+      margin-bottom: 0.4rem;
+      font-weight: 800;
+      position: relative;
+      z-index: 1;
+    }
+    .notif-lead-box h3 i {
+      color: #25D366;
+      margin-right: 0.3rem;
+    }
+    .notif-lead-box p {
+      color: #4a7a5c;
+      font-size: 0.88rem;
+      margin-bottom: 1rem;
+      line-height: 1.4;
+      position: relative;
+      z-index: 1;
+    }
+    .notif-lead-form-compact {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      position: relative;
+      z-index: 1;
+    }
+    .notif-lead-input {
+      position: relative;
+      width: 100%;
+    }
+    .notif-lead-input i {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #25D366;
+      font-size: 0.9rem;
+      pointer-events: none;
+    }
+    .notif-lead-input input {
+      width: 100%;
+      padding: 0.75rem 0.9rem 0.75rem 2.5rem;
+      border: 1.5px solid rgba(37, 211, 102, 0.3);
+      border-radius: 1rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      font-family: inherit;
+      outline: none;
+      background: white;
+      color: var(--text);
+      transition: all 0.25s;
+    }
+    .notif-lead-input input:focus {
+      border-color: #25D366;
+      box-shadow: 0 0 0 4px rgba(37, 211, 102, 0.15);
+    }
+    .notif-lead-btn {
+      background: linear-gradient(135deg, #25D366, #128C7E);
+      color: white;
+      border: none;
+      padding: 0.8rem 1.2rem;
+      border-radius: 2rem;
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.25s;
+      box-shadow: 0 8px 20px -8px rgba(37, 211, 102, 0.5);
+      font-family: inherit;
+      margin-top: 0.3rem;
+    }
+    .notif-lead-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 25px -8px rgba(37, 211, 102, 0.7);
+    }
+    .notif-lead-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .notif-lead-mensagem {
+      margin-top: 0.8rem;
+      padding: 0.7rem 1rem;
+      border-radius: 0.8rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-align: left;
+      position: relative;
+      z-index: 1;
+    }
+    .notif-lead-mensagem.sucesso {
+      background: white;
+      color: #0d7a4a;
+      border-left: 4px solid #22b573;
+    }
+    .notif-lead-mensagem.erro {
+      background: #ffe0e0;
+      color: #a13030;
+      border-left: 4px solid #e74c3c;
+    }
+    .notif-lead-mensagem.aviso {
+      background: #fff3cd;
+      color: #7a5b1a;
+      border-left: 4px solid #f5a623;
+    }
+
+    @media (max-width: 768px) {
+      .duas-caixas-container {
+        grid-template-columns: 1fr;
+        gap: 1.2rem;
+      }
     }
   </style>
 </head>
@@ -91,7 +251,7 @@
   </div>
 </header>
 
-<!-- ABA: BUSCAR (só admin/vendedor) -->
+<!-- ABA: BUSCAR -->
 <div class="tab-content" id="tab-buscar" style="display:none;">
   <div class="container">
     <header class="header">
@@ -234,17 +394,45 @@
       </div>
     </div>
 
-    <div class="solicitar-cartao-box">
-      <h3><i class="fas fa-ticket-alt"></i> Já comprou sua excursão?</h3>
-      <p>Solicite ao vendedor o link do seu cartão de embarque</p>
-      <button class="btn-primary" onclick="abrirSolicitarCartao()" type="button">
-        <i class="fas fa-paper-plane"></i> Solicitar Cartão de Embarque
-      </button>
+    <!-- ✅ DUAS CAIXAS LADO A LADO -->
+    <div class="duas-caixas-container">
+
+      <!-- CAIXA 1: SOLICITAR CARTÃO -->
+      <div class="solicitar-cartao-box">
+        <h3><i class="fas fa-ticket-alt"></i> Já comprou sua excursão?</h3>
+        <p>Solicite ao vendedor o link do seu cartão de embarque</p>
+        <button class="btn-primary" onclick="abrirSolicitarCartao()" type="button">
+          <i class="fas fa-paper-plane"></i> Solicitar Cartão de Embarque
+        </button>
+      </div>
+
+      <!-- CAIXA 2: NOTIFICAÇÃO WHATSAPP -->
+      <div class="notif-lead-box">
+        <h3><i class="fab fa-whatsapp"></i> Quer receber avisos?</h3>
+        <p>Cadastre-se e seja o primeiro a saber das novas excursões!</p>
+
+        <form id="formLead" class="notif-lead-form-compact" autocomplete="off">
+          <div class="notif-lead-input">
+            <i class="fas fa-user"></i>
+            <input type="text" id="leadNome" placeholder="Seu nome" required minlength="3" autocomplete="name">
+          </div>
+          <div class="notif-lead-input">
+            <i class="fas fa-phone"></i>
+            <input type="tel" id="leadTelefone" placeholder="(14) 99999-9999" required maxlength="15" autocomplete="tel">
+          </div>
+          <button type="submit" class="notif-lead-btn" id="btnCadastrarLead">
+            <i class="fab fa-whatsapp"></i> Quero receber
+          </button>
+        </form>
+
+        <div id="leadMensagem" class="notif-lead-mensagem" style="display:none;"></div>
+      </div>
+
     </div>
   </div>
 </div>
 
-<!-- ABA: GERENCIAR (só admin/vendedor) -->
+<!-- ABA: GERENCIAR -->
 <div class="tab-content" id="tab-gerenciar" style="display:none;">
   <div class="container">
     <header class="header">
@@ -264,6 +452,9 @@
       </button>
       <button class="btn-secondary" onclick="abrirPainelNotificacoes()" type="button" style="background:linear-gradient(135deg,#25D366,#128C7E);color:white;border:none;">
         <i class="fab fa-whatsapp"></i> Notificar Passageiros
+      </button>
+      <button class="btn-secondary" onclick="abrirPainelLeads()" type="button" style="background:linear-gradient(135deg,#5c3ec9,#29a3d4);color:white;border:none;">
+        <i class="fas fa-bullhorn"></i> Notificar Leads
       </button>
       <button class="btn-primary" onclick="abrirFormExcursao()" type="button">
         <i class="fas fa-plus"></i> Nova excursão
@@ -559,7 +750,7 @@
   </div>
 </div>
 
-<!-- MODAL LEITOR QR (ADMIN) -->
+<!-- MODAL LEITOR QR -->
 <div class="modal-overlay" id="leitorModal">
   <div class="modal leitor-modal">
     <button class="modal-close" onclick="fecharLeitor()" type="button"><i class="fas fa-times"></i></button>
@@ -591,7 +782,7 @@
   </div>
 </div>
 
-<!-- MODAL LISTA DE PASSAGEIROS -->
+<!-- MODAL LISTA -->
 <div class="modal-overlay" id="listaModal">
   <div class="modal lista-modal">
     <button class="modal-close" onclick="fecharLista()" type="button">
@@ -610,7 +801,7 @@
   </div>
 </div>
 
-<!-- ✅ MODAL NOTIFICAÇÕES WHATSAPP -->
+<!-- MODAL NOTIFICAÇÕES -->
 <div class="modal-overlay" id="notificacoesModal">
   <div class="modal notificacoes-modal">
     <button class="modal-close" onclick="fecharPainelNotificacoes()" type="button">
@@ -629,7 +820,7 @@
   </div>
 </div>
 
-<!-- ✅ MODAL APROVAÇÕES -->
+<!-- MODAL APROVAÇÕES -->
 <div class="modal-overlay" id="aprovacoesModal">
   <div class="modal aprovacoes-modal">
     <button class="modal-close" onclick="fecharPainelAprovacoes()" type="button">
@@ -648,7 +839,7 @@
   </div>
 </div>
 
-<!-- ✅ MODAL RECUSA -->
+<!-- MODAL RECUSA -->
 <div class="modal-overlay" id="recusaModal">
   <div class="modal recusa-modal">
     <button class="modal-close" onclick="fecharModalRecusa()" type="button">
@@ -754,6 +945,7 @@
   <div class="modal" id="modalContent"></div>
 </div>
 
+<!-- SCRIPTS -->
 <script src="config.js"></script>
 <script src="admin.js"></script>
 <script src="compra.js"></script>
@@ -762,6 +954,10 @@
 <script src="notificacoes.js"></script>
 <script src="clima.js"></script>
 <script src="aprovacao.js"></script>
+<script src="dicionario.js"></script>
+<script src="i18n.js"></script>
+<script src="leads.js"></script>
+<script src="notificar-leads.js"></script>
 
 <script>
   window.abrirLogin    = window.abrirLogin    || function(){ console.warn('admin.js não carregou'); };
@@ -791,6 +987,8 @@
   window.abrirPainelAprovacoes = window.abrirPainelAprovacoes || function(){ console.warn('aprovacao.js não carregou'); };
   window.fecharPainelAprovacoes = window.fecharPainelAprovacoes || function(){ const m=document.getElementById('aprovacoesModal'); if(m) m.classList.remove('active'); document.body.style.overflow=''; };
   window.fecharModalRecusa = window.fecharModalRecusa || function(){ const m=document.getElementById('recusaModal'); if(m) m.classList.remove('active'); document.body.style.overflow=''; };
+  window.abrirPainelLeads = window.abrirPainelLeads || function(){ console.warn('notificar-leads.js não carregou'); };
+  window.fecharPainelLeads = window.fecharPainelLeads || function(){ const m=document.getElementById('leadsModal'); if(m) m.classList.remove('active'); document.body.style.overflow=''; };
   console.log('✅ Fallbacks de segurança aplicados');
 </script>
 </body>

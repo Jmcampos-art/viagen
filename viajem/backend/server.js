@@ -1885,7 +1885,130 @@ function iniciarCronNotificacoes() {
 
   console.log('⏰ Cron de notificações agendado para 08:00 (horário de Brasília)');
 }
+/* ============================================================
+   LEADS — Pessoas interessadas em receber notificações
+   ============================================================ */
 
+/* POST público — cadastrar lead */
+app.post('/api/leads', async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.status(500).json({ error: 'Banco não conectado' });
+
+    const { nome, telefone } = req.body;
+
+    if (!nome || !telefone) {
+      return res.status(400).json({ error: 'Nome e telefone são obrigatórios' });
+    }
+
+    // Limpa o telefone (só dígitos)
+    const telLimpo = String(telefone).replace(/\D/g, '');
+    if (telLimpo.length < 10 || telLimpo.length > 13) {
+      return res.status(400).json({ error: 'Telefone inválido' });
+    }
+
+    // Verifica se já existe
+    const existe = await db.collection('leads').findOne({ telefone: telLimpo });
+    if (existe) {
+      return res.json({
+        ok: true,
+        jaCadastrado: true,
+        mensagem: 'Você já está na nossa lista! Vamos te avisar. 😉'
+      });
+    }
+
+    const novo = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      nome: nome.trim(),
+      telefone: telLimpo,
+      telefoneFormatado: formatarTelefoneLead(telLimpo),
+      origem: 'site-final',
+      ativo: true,
+      criadoEm: new Date().toISOString(),
+      notificacoesEnviadas: 0,
+      ultimaNotificacao: null
+    };
+
+    await db.collection('leads').insertOne(novo);
+    console.log(`📢 Novo lead: ${novo.nome} (${novo.telefoneFormatado})`);
+
+    res.status(201).json({
+      ok: true,
+      lead: novo,
+      mensagem: 'Cadastro feito! Você vai receber nossas novidades. 🎉'
+    });
+
+  } catch (err) {
+    console.error('Erro ao cadastrar lead:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* GET admin — listar todos os leads */
+app.get('/api/leads', exigirAdminHeader, async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.json({ leads: [], total: 0 });
+
+    const leads = await db.collection('leads')
+      .find({ ativo: true })
+      .sort({ criadoEm: -1 })
+      .toArray();
+
+    res.json({
+      leads,
+      total: leads.length,
+      comWhatsApp: leads.filter(l => l.telefone).length
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* DELETE admin — remover lead */
+app.delete('/api/leads/:id', exigirAdminHeader, async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.status(500).json({ error: 'Banco não conectado' });
+
+    await db.collection('leads').updateOne(
+      { id: req.params.id },
+      { $set: { ativo: false, removidoEm: new Date().toISOString() } }
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* POST admin — marcar lead como notificado */
+app.post('/api/leads/:id/notificado', exigirAdminHeader, async (req, res) => {
+  try {
+    const db = getDB();
+    if (!db) return res.status(500).json({ error: 'Banco não conectado' });
+
+    await db.collection('leads').updateOne(
+      { id: req.params.id },
+      {
+        $inc: { notificacoesEnviadas: 1 },
+        $set: { ultimaNotificacao: new Date().toISOString() }
+      }
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* Helper */
+function formatarTelefoneLead(tel) {
+  if (!tel) return '';
+  if (tel.length === 11) return `(${tel.slice(0, 2)}) ${tel.slice(2, 7)}-${tel.slice(7)}`;
+  if (tel.length === 10) return `(${tel.slice(0, 2)}) ${tel.slice(2, 6)}-${tel.slice(6)}`;
+  return tel;
+}
 /* ============================================================
    CONECTA AO MONGODB E SOBE O SERVIDOR
    ============================================================ */
